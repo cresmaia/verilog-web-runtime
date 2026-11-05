@@ -1,0 +1,28 @@
+# yosys.core.wasm の関数名(name セクション)。ABC つき 45491・B1 27834。多重集合の差で比べた(名前の全文。c++filt を通さない)
+B1 にあって ABC つきに無い名前: 0
+ABC つきにあって B1 に無い名前: 17657
+B1 で消えた名前の最上位の名前空間ごとの数:
+   15484  abc
+    1663  -no-namespace-
+     432  std
+      72  Yosys
+       3  Node
+       2  Graph
+       1  Column
+B1 に残る名前で abc を(大文字小文字を問わず)含む物:
+  (anonymous namespace)::Abc9OpsPass::execute(std::__2::vector<std::__2::basic_string<char, std::__2::char_traits<char>, std::__2::allocator<char>>, std
+  (anonymous namespace)::Abc9OpsPass::help()
+  (anonymous namespace)::Abc9OpsPass::~Abc9OpsPass()
+  (anonymous namespace)::AbcOpsReintegratePass::execute(std::__2::vector<std::__2::basic_string<char, std::__2::char_traits<char>, std::__2::allocator<c
+  (anonymous namespace)::AbcOpsReintegratePass::help()
+  (anonymous namespace)::AbcOpsReintegratePass::~AbcOpsReintegratePass()
+  (anonymous namespace)::TestAbcloopPass::execute(std::__2::vector<std::__2::basic_string<char, std::__2::char_traits<char>, std::__2::allocator<char>>,
+  (anonymous namespace)::TestAbcloopPass::help()
+  (anonymous namespace)::TestAbcloopPass::~TestAbcloopPass()
+  (anonymous namespace)::test_abcloop()
+  Yosys::init_abc_executable_name()
+  _GLOBAL__sub_I_abc9_ops.cc
+  _GLOBAL__sub_I_abc_ops_reintegrate.cc
+  _GLOBAL__sub_I_test_abcloop.cc
+  slang::CommandLine::toKebabCase(std::__2::basic_string_view<char, std::__2::char_traits<char>>)
+saucy を含む名前: B1 0・ABC つき 35

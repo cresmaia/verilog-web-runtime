@@ -1,0 +1,1801 @@
+diff --git a/ivl_dlfcn.h b/ivl_dlfcn.h
+index ebbc04eea..cf1c40764 100644
+--- a/ivl_dlfcn.h
++++ b/ivl_dlfcn.h
+@@ -19,7 +19,37 @@
+  *    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+  */
+ 
+-#if defined(__MINGW32__)
++/*
++ * Static module builds (WebAssembly: Emscripten or WASI) have no dynamic
++ * loader. The code generator (vvp.tgt) and the VPI modules (system.vpi,
++ * ...) are linked into the executable instead, and each program provides
++ * a table, ivl_static_modules[], that maps a module name to its entry
++ * points. ivl_dlopen()/ivl_dlsym() below look the names up in that table.
++ */
++#if !defined(IVL_STATIC_MODULES) && (defined(__EMSCRIPTEN__) || defined(__wasi__))
++# define IVL_STATIC_MODULES 1
++#endif
++
++#if defined(IVL_STATIC_MODULES)
++# include  <string.h>
++struct ivl_static_symbol {
++      const char*name;
++      void*addr;
++};
++struct ivl_static_module {
++      const char*name;
++      const struct ivl_static_symbol*symbols;
++};
++#if defined(__cplusplus)
++extern "C" {
++#endif
++extern const struct ivl_static_module ivl_static_modules[];
++#if defined(__cplusplus)
++}
++#endif
++typedef const struct ivl_static_module* ivl_dll_t;
++
++#elif defined(__MINGW32__)
+ # include <windows.h>
+ #if defined(__cplusplus)
+ # include <cstdio>
+@@ -35,7 +65,50 @@ typedef void* ivl_dll_t;
+ typedef shl_t ivl_dll_t;
+ #endif
+ 
+-#if defined(__MINGW32__)
++#if defined(IVL_STATIC_MODULES)
++/*
++ * Match on the base name without directory or suffix, so that
++ * "/some/dir/system.vpi", "system.vpi" and "system" all find the
++ * "system" module, and "vvp.tgt" finds the "vvp" code generator.
++ */
++static inline ivl_dll_t ivl_dlopen(const char*name, bool global_flag)
++{
++      (void)global_flag;
++      const char*base = name;
++      for (const char*cp = name ;  *cp ;  cp += 1) {
++	    if (*cp == '/' || *cp == '\\') base = cp + 1;
++      }
++      size_t len = strlen(base);
++      const char*dot = strrchr(base, '.');
++      if (dot && (strcmp(dot, ".vpi") == 0 || strcmp(dot, ".vpl") == 0 ||
++                  strcmp(dot, ".tgt") == 0))
++	    len = dot - base;
++
++      for (ivl_dll_t mod = ivl_static_modules ;  mod->name ;  mod += 1) {
++	    if (strlen(mod->name) == len && strncmp(mod->name, base, len) == 0)
++		  return mod;
++      }
++      return 0;
++}
++
++static inline void* ivl_dlsym(ivl_dll_t dll, const char*nm)
++{
++      if (dll == 0) return 0;
++      for (const struct ivl_static_symbol*sym = dll->symbols ;  sym->name ;  sym += 1) {
++	    if (strcmp(sym->name, nm) == 0) return sym->addr;
++      }
++	/* Not found? try without the leading _ */
++      if (nm[0] == '_') return ivl_dlsym(dll, nm+1);
++      return 0;
++}
++
++static inline void ivl_dlclose(ivl_dll_t dll)
++{ (void)dll; }
++
++static inline const char*dlerror(void)
++{ return "module is not linked into this static (WebAssembly) build"; }
++
++#elif defined(__MINGW32__)
+ static inline ivl_dll_t ivl_dlopen(const char *name, bool global_flag)
+ {
+       static char full_name[4096];
+diff --git a/vpi/fstapi.c b/vpi/fstapi.c
+index 82afe34b1..fe4eb9d58 100644
+--- a/vpi/fstapi.c
++++ b/vpi/fstapi.c
+@@ -2000,6 +2000,9 @@ void fstWriterClose(fstWriterContext *xc)
+                 unsigned char *mem = (unsigned char *)malloc(FST_GZIO_LEN);
+                 zfd = dup(fileno(xc->handle));
+                 fflush(xc->handle);
++                /* Not every platform shares the file offset between dup()ed
++                   descriptors (Emscripten does not), so position it here. */
++                lseek(zfd, ftello(xc->handle), SEEK_SET);
+                 zhandle = gzdopen(zfd, "wb4");
+                 if (zhandle) {
+                     fstWriterFseeko(xc, xc->hier_handle, 0, SEEK_SET);
+diff --git a/vpi/sys_lxt.c b/vpi/sys_lxt.c
+index e985d5a6c..1547e1a53 100644
+--- a/vpi/sys_lxt.c
++++ b/vpi/sys_lxt.c
+@@ -430,11 +430,10 @@ static PLI_INT32 sys_dumpall_calltf(ICARUS_VPI_CONST PLI_BYTE8*name)
+       return 0;
+ }
+ 
+-static void *close_dumpfile(void)
++static void close_dumpfile(void)
+ {
+       lt_close(dump_file);
+       dump_file = NULL;
+-      return NULL;
+ }
+ 
+ static void open_dumpfile(vpiHandle callh)
+@@ -463,7 +462,7 @@ static void open_dumpfile(vpiHandle callh)
+ 	    lt_set_initial_value(dump_file, 'x');
+ 	    lt_set_clock_compress(dump_file);
+ 
+-            atexit((void(*)(void))close_dumpfile);
++            atexit(close_dumpfile);
+       }
+ }
+ 
+diff --git a/vpi/sys_lxt2.c b/vpi/sys_lxt2.c
+index b001508f0..104a508ad 100644
+--- a/vpi/sys_lxt2.c
++++ b/vpi/sys_lxt2.c
+@@ -465,11 +465,10 @@ static PLI_INT32 sys_dumpall_calltf(ICARUS_VPI_CONST PLI_BYTE8*name)
+       return 0;
+ }
+ 
+-static void *close_dumpfile(void)
++static void close_dumpfile(void)
+ {
+       lxt2_wr_close(dump_file);
+       dump_file = NULL;
+-      return NULL;
+ }
+ 
+ static void open_dumpfile(vpiHandle callh)
+@@ -515,7 +514,7 @@ static void open_dumpfile(vpiHandle callh)
+ 	    lxt2_wr_set_break_size(dump_file, use_file_size_limit);
+ 
+ 	    vcd_work_start(lxt2_thread, 0);
+-            atexit((void(*)(void))close_dumpfile);
++            atexit(close_dumpfile);
+       }
+ }
+ 
+diff --git a/vpi/vcd_priv2.cc b/vpi/vcd_priv2.cc
+index 7c4d33008..04bb5d0d8 100644
+--- a/vpi/vcd_priv2.cc
++++ b/vpi/vcd_priv2.cc
+@@ -88,6 +88,22 @@ extern "C" void vcd_scope_names_delete(void)
+ 
+ static std::thread work_thread;
+ 
++/*
++ * Without threads (e.g. WebAssembly built without pthreads) there is no
++ * separate work thread. Instead, each time a batch is released the
++ * consumer function runs right away on everything that is queued, with an
++ * extra WT_TERMINATE item after it so that its loop returns when the queue
++ * is empty.
++ */
++#if !defined(VCD_WORK_INLINE) && defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
++# define VCD_WORK_INLINE 1
++#endif
++#ifdef VCD_WORK_INLINE
++static void* (*work_fun)(void*) = 0;
++static void* work_arg = 0;
++static void drain_work_queue(void);
++#endif
++
+ static const unsigned WORK_QUEUE_SIZE = 128*1024;
+ static const unsigned WORK_QUEUE_BATCH_MIN = 4*1024;
+ static const unsigned WORK_QUEUE_BATCH_MAX = 32*1024;
+@@ -157,7 +173,12 @@ static unsigned current_batch_base = 0;
+ 
+ extern "C" void vcd_work_start( void* (*fun) (void*), void*arg )
+ {
++#ifdef VCD_WORK_INLINE
++      work_fun = fun;
++      work_arg = arg;
++#else
+       work_thread = std::thread(fun, arg);
++#endif
+ }
+ 
+ static struct vcd_work_item_s* grab_item(void)
+@@ -208,7 +229,37 @@ static void end_batch(void)
+       if (was_empty_flag)
+             work_queue_notempty_sig.notify_one();
+ 
++#ifdef VCD_WORK_INLINE
++      drain_work_queue();
++#endif
++}
++
++#ifdef VCD_WORK_INLINE
++static void drain_work_queue(void)
++{
++      if (work_fun == 0 || work_queue_fill == 0)
++	    return;
++
++      unsigned last = work_queue_next + work_queue_fill - 1;
++      if (last >= WORK_QUEUE_SIZE)
++	    last -= WORK_QUEUE_SIZE;
++      unsigned stop = last + 1;
++      if (stop >= WORK_QUEUE_SIZE)
++	    stop -= WORK_QUEUE_SIZE;
++      work_queue[stop].type = WT_TERMINATE;
++      work_queue[stop].time = work_queue[last].time;
++      work_queue_fill += 1;
++
++      work_fun(work_arg);
++
++	// If the queue held a real WT_TERMINATE the consumer stopped there,
++	// and only the extra item is left. Drop it.
++      if (work_queue_fill > 0) {
++	    work_queue_next = stop + 1 < WORK_QUEUE_SIZE ? stop + 1 : 0;
++	    work_queue_fill = 0;
++      }
+ }
++#endif
+ 
+ static inline void unlock_item(bool flush_batch =false)
+ {
+@@ -279,5 +330,7 @@ extern "C" void vcd_work_terminate(void)
+       struct vcd_work_item_s*cell = grab_item();
+       cell->type = WT_TERMINATE;
+       unlock_item(true);
++#ifndef VCD_WORK_INLINE
+       work_thread.join();
++#endif
+ }
+diff --git a/vvp/vpi_modules.cc b/vvp/vpi_modules.cc
+index 9257447e9..cf3c7375a 100644
+--- a/vvp/vpi_modules.cc
++++ b/vvp/vpi_modules.cc
+@@ -144,6 +144,17 @@ void load_module_delete(void)
+ 
+ void vpip_load_module(const char*name)
+ {
++#if defined(IVL_STATIC_MODULES)
++	/* A static (WebAssembly) build has no dynamic loader. The VPI
++	   modules are linked into vvp, so look the name up directly
++	   instead of searching the module path for a file. */
++      ivl_dll_t dll = ivl_dlopen(name, false);
++      if (dll == 0) {
++	    fprintf(stderr, "%s: Unable to find a `%s.vpi' module: %s.\n",
++		    name, name, dlerror());
++	    return;
++      }
++#else
+       struct stat sb;
+       int rc;
+       bool export_flag = false;
+@@ -228,6 +239,7 @@ void vpip_load_module(const char*name)
+ 
+ 	return;
+       }
++#endif
+ 
+ #if defined(__MINGW32__) || defined (__CYGWIN__)
+       void*function = ivl_dlsym(dll, "vpip_set_callback");
+diff --git a/wasm/README.md b/wasm/README.md
+new file mode 100644
+index 000000000..607499150
+--- /dev/null
++++ b/wasm/README.md
+@@ -0,0 +1,154 @@
++# Icarus Verilog の WebAssembly ビルド
++
++Icarus Verilog の 3 つのプログラム（`ivlpp` プリプロセッサ、`ivl` コンパイラ、`vvp` ランタイム）を
++Emscripten で WebAssembly にし、ブラウザ（Web Worker）と Node.js で動かすための一式です。
++
++- 対象ソース: upstream `master` のコミット `1a23d1ffd`（2026-09-10、Icarus Verilog 14.0 devel）
++- 本体への変更は小さく、移植のための 2 ファイル（`ivl_dlfcn.h`, `vvp/vpi_modules.cc`）と、
++  WebAssembly で表に出た既存の問題の修正 4 ファイル（下記「本体で直したもの」）です。
++  移植用の変更は `IVL_STATIC_MODULES`（Emscripten/WASI では自動で有効）のときだけ効くので、通常ビルドには影響しません。
++- 残りは新規ディレクトリ `wasm/` にまとまっています。
++
++## ビルド
++
++必要なもの: Emscripten（emsdk）、autoconf、gperf、bison、flex、make、ホスト用 C コンパイラ（gcc/clang）、git、Node.js。
++FST/LXT 波形出力用に zlib と bzip2 を GitHub から git clone して Emscripten でビルドします（`WITH_ZLIB=0` で省略、VCD だけになります）。
++
++```sh
++git clone https://github.com/steveicarus/iverilog.git
++cd iverilog
++git checkout 1a23d1ffd
++git apply /path/to/iverilog-wasm.patch
++
++source ~/emsdk/emsdk_env.sh     # emcc を PATH に入れる
++wasm/build.sh                   # 出力: build-wasm/dist/
++```
++
++2 コアのマシンで 3〜5 分です。`dist/` の中身:
++
++| ファイル | 内容 |
++|---|---|
++| `ivlpp.js/.wasm` | プリプロセッサ |
++| `ivl.js/.wasm` | コンパイラ（`tgt-vvp` コード生成器と VPI モジュールを静的リンク） |
++| `vvp.js/.wasm` | シミュレータ（VPI モジュール `system`, `v2005_math`, `v2009`, `va_math`, `vhdl_sys`, `vhdl_textio`, `vpi_debug` を静的リンク） |
++| `iverilog-wasm.js` | `iverilog` ドライバの代わり（下記） |
++| `iverilog-node.js` | Node 用のコマンドライン版（テスト用） |
++| `index.html`, `worker.js` | ブラウザデモ |
++| `SOURCE.patch` | 対応するソース（元のコミット番号＋全変更）。`dist/` を公開すればソースも一緒に公開されます |
++
++ブラウザで試す:
++
++```sh
++cd build-wasm/dist && python3 -m http.server 8000
++# http://localhost:8000/ を開く（file:// では wasm を読めません）
++```
++
++`NODE_CLI=1 wasm/build.sh` とすると、実ファイルシステムを使う Node 版（`build-wasm/node-cli/`）も作り、
++ネイティブの `iverilog` ドライバから `-B` で呼べるようにします（回帰テスト用）。
++
++## 何を変えたか
++
++ネイティブの Icarus Verilog は「`iverilog` ドライバが設定ファイルを書き、`ivlpp | ivl` を子プロセスで起動し、
++`ivl` はコード生成器 `vvp.tgt` を、`vvp` は `system.vpi` などを `dlopen()` で読み込む」という作りです。
++ブラウザには子プロセスも `dlopen()` もないので、次の 3 点で置き換えています。
++
++1. **dlopen → 静的リンク + 名前表**。`ivl_dlfcn.h` の `ivl_dlopen()/ivl_dlsym()` を、
++   `wasm/static_modules_{ivl,vvp}.c` の表を引く実装に差し替えます（`"…/system.vpi"` も `"system"` も同じ扱い）。
++   各 VPI モジュールの `vlog_startup_routines[]` は名前が衝突するので、`wasm/vpi-static.mk` で
++   モジュールごとに `vlog_startup_routines_system` などへ改名してコンパイルします。
++   `vvp/vpi_modules.cc` はファイルを `stat()` で探す部分を静的ビルドでは飛ばします。
++2. **子プロセス → JS ドライバ**。`wasm/iverilog-wasm.js` が `iverilog` と同じ内容の設定ファイル
++   （`-F` defines、`-f` ソース一覧、`-C` iconfig、`vvp.conf`）を各モジュールのメモリ上 FS に書き、
++   `ivlpp → ivl → vvp` を順に実行します。
++3. **ビルド時にホストで動かすツール**（`vvp/draw_tt` → `tables.cc`）は configure の
++   `CC_FOR_BUILD` でホストのコンパイラを使います（iverilog のビルドに元からある仕組み）。
++
++見落としやすい点: `ivl` はコンパイル時にも VPI モジュールを読み込み、システム関数の戻り値の型を
++調べています。ここを省くと `$random` が符号なしに、`$realtime` や `$sqrt` が 32 ビット整数として
++扱われ、結果が静かに変わります。このビルドでは VPI モジュールを `ivl` にもリンクしています。
++
++## 本体で直したもの
++
++WebAssembly は関数ポインタの型やファイル記述子の扱いがネイティブより厳密なので、波形出力（VPI）まわりで
++既存コードの問題が 3 つ表に出ました。どれも hello world では出ず、回帰テストと出力ファイルの比較で見つかったものです。
++
++- `vpi/sys_lxt.c`, `vpi/sys_lxt2.c`: `void *close_dumpfile(void)` を `(void(*)(void))` にキャストして `atexit()` に登録していた。
++  WebAssembly では型の違う関数呼び出しはトラップになり、LXT 出力が終了時に落ちる。戻り値を `void` に。
++- LXT/LXT2/FST の各 writer: 圧縮データを `gzdopen(dup(fd))` で書き、新しい記述子が元と同じファイル位置から始まる前提。
++  Emscripten の `dup()` はファイルを開き直すので位置が引き継がれず（3.1.6 では先頭から）、ファイルの先頭が上書きされて壊れる。
++  位置を引き継ぐ `dup()`（`wasm/dup_offset.c`）を `vvp` にリンクし、`vpi/fstapi.c` の `fflush()` より前に `dup()` している
++  箇所には位置合わせの `lseek()` を追加。
++- `vpi/vcd_priv2.cc`: LXT2 出力は書き込み用スレッド（`std::thread`）を使う。スレッドなしの WebAssembly では起動できずに
++  abort するので、スレッドがないときはバッチごとにその場で処理する経路を追加。
++
++## 古い Emscripten について
++
++古い Emscripten（Debian/Ubuntu パッケージの 3.1.6 など）は LLVM と組み合わせがずれていて
++`main(argc, argv)` を見つけられないため、`wasm/main_export_shim.c` を自動で追加します
++（新しい emsdk では追加されません）。
++
++## JavaScript から使う
++
++```js
++// Web Worker の中（worker.js 参照）。Node では require() で同じ 4 ファイルを読み込む
++importScripts('ivlpp.js', 'ivl.js', 'vvp.js', 'iverilog-wasm.js');
++const iv = IverilogWasm.create({ createIvlpp, createIvl, createVvp });
++
++async function run(designSrc, tbSrc, headerSrc, hex) {
++  const c = await iv.compile({
++    files: { 'design.v': designSrc, 'tb.v': tbSrc, 'defs.vh': headerSrc },
++    generation: ['2012'],          // -g の値を並べる（'specify' なども可）
++    defines: { WIDTH: 8 },          // -D
++    top: 'tb',                      // -s（省略可）
++    onLine: (stream, line) => postMessage({ stream, line }),
++  });
++  if (!c.ok) return null;
++  const s = await iv.simulate({ vvp: c.vvp, args: ['+seed=1'], files: { 'rom.hex': hex },
++                                onLine: (stream, line) => postMessage({ stream, line }) });
++  return new TextDecoder().decode(s.files['dump.vcd']);   // $dumpfile で作られたファイル
++}
++```
++
++- 実行ごとに新しいインスタンスを作ります（C のグローバル変数が初期化されないため）。wasm のコンパイル結果は使い回すので、
++  2 回目以降はコンパイル＋実行で数十 ms です。
++- ブラウザでは Web Worker で動かしてください。無限ループのシミュレーションも `worker.terminate()` で止められます。
++- FST で出力するには `simulate({ ..., args: ['-fst'] })`（vvp のファイル名の後ろに付く引数）。
++- `libraryDirs`（`-y`）は、`ivl` が不足モジュールを報告したら `<dir>/<module>.v` を足して再コンパイルする方式、
++  `separateUnits`（`-u`）はファイルごとに `ivlpp` を実行して別々のコンパイル単位として `ivl` に渡す方式です。
++- `findFile(path)` を渡すと、見つからない `` `include `` ファイルやライブラリファイルをその都度取りに行けます（サーバーから fetch するなど）。
++
++Node のコマンドライン版:
++
++```sh
++node dist/iverilog-node.js --run -g2012 design.v tb.v     # コンパイル＋実行、dump.vcd などを書き出す
++node dist/iverilog-node.js --run -fst design.v tb.v       # FST で出力
++node dist/iverilog-node.js -o a.vvp design.v tb.v          # コンパイルだけ
++```
++
++## 確認したこと
++
++詳細は `TEST-RESULTS.md`。
++
++- 公式回帰テスト（`ivtest`）を、ネイティブの `iverilog` ドライバ＋ WebAssembly 版 `ivlpp/ivl/vvp`
++  （Node, `NODE_CLI=1` のビルド）で実行。
++- ブラウザと同じ経路（`iverilog-wasm.js` が設定を組み立て、メモリ上 FS で動かす）で `ivtest` のテストを実行し、ネイティブと出力を比較。
++- 波形ファイル: VCD と LXT/LXT2 はネイティブとバイト単位で一致、FST はヘッダーの日時以外一致（fstapi のリーダーで読み戻した中身も一致）。
++- ヘッドレス Chromium でデモを実行（コンパイル＋シミュレーション、コンパイルエラー表示、Stop）。
++- 速度: CPU 負荷の高いテストベンチで、ネイティブ `vvp`（-O2）の約 1.8 倍の実行時間。
++
++## できないこと
++
++- VHDL 入力（`vhdlpp` を移植していないため。`ivlpp` が `vhdlpp` を子プロセスで起動する作りなので、JS ドライバ側で段を足す必要があります）。
++- `-t vvp` 以外のコード生成器（`-t null`, `-t vlog95` など）。必要なら同じ方法で `ivl` にリンクできます。
++- `$system()`、ユーザー作成の VPI モジュール（`-m`）の動的読み込み、対話モード（`$stop` 後の入力は EOF 扱い）。
++- `-y`（ライブラリ検索）と `-u`（ファイルごとのコンパイル単位）は、ネイティブでは `ivl` が `ivlpp` を子プロセスで
++  起動して実現しています。WebAssembly の `ivl` 単体ではできないので、JS ドライバ（`libraryDirs`, `separateUnits`）で同じことをしています。
++- 極端に深い再帰（巨大な式など）はブラウザのスタック上限に当たる可能性があります。
++- 動作確認は Emscripten 3.1.6（Ubuntu パッケージ）のみ。新しい emsdk 向けの分岐（`STACK_SIZE` 名など）は
++  スクリプトに入れてありますが、そちらでは未確認です。
++
++## ライセンス
++
++Icarus Verilog は GNU GPL version 2 以降です。`wasm/` 以下の追加ファイルも同じ条件（GPL-2.0-or-later）です。
++ビルドした `.wasm/.js` をウェブで公開・配布する場合、それはオブジェクトコードの頒布にあたるので、
++対応するソースコード（このパッチとビルドスクリプトを含む）を同じ場所から入手できるようにしてください。
+diff --git a/wasm/TEST-RESULTS.md b/wasm/TEST-RESULTS.md
+new file mode 100644
+index 000000000..43de6d376
+--- /dev/null
++++ b/wasm/TEST-RESULTS.md
+@@ -0,0 +1,59 @@
++# 検証結果
++
++対象: upstream `1a23d1ffd` ＋ このパッチ、Emscripten 3.1.6（Ubuntu パッケージ, LLVM 15）、Node.js 22、
++ヘッドレス Chromium（Playwright 1.56）。比較対象は同じコミットのネイティブビルド（gcc, `-O2`）。
++
++## 1. 公式回帰テスト ivtest（ネイティブのドライバ ＋ WebAssembly の ivlpp/ivl/vvp）
++
++`NODE_CLI=1 wasm/build.sh` で作った Node 用ビルドを、ネイティブの `iverilog` から `-B` で呼び出し、
++`ivtest` の 2 つのランナーをそのまま実行しました。
++
++```sh
++# PATH に置くラッパー
++iverilog:  exec <native>/bin/iverilog -B<build>/node-cli/lib/ivl "$@"
++vvp:       exec <build>/node-cli/vvp "$@"
++cd ivtest && perl vvp_reg.pl && python3 vvp_reg.py
++```
++
++| ランナー | ネイティブ | WebAssembly |
++|---|---|---|
++| `vvp_reg.pl`（3024 件） | 成功 3019、失敗 0 | 成功 2879、失敗 140 |
++| `vvp_reg.py`（721 件） | 失敗 0 | 失敗 3 |
++
++WebAssembly 側の失敗の内訳（すべて「子プロセスを起動する機能」）:
++
++| 原因 | 件数 |
++|---|---|
++| VHDL（`ivlpp` が `vhdlpp` を起動する。`vhdlpp` は未移植） | 133 |
++| `-u`（`ivl` がファイルごとに `ivlpp` を起動する） | 6＋2 |
++| `-y`（`ivl` がライブラリファイルに `ivlpp` を起動する） | 1＋1 |
++
++（件数は `vvp_reg.pl`＋`vvp_reg.py`）`-u` と `-y` は JS ドライバ（`separateUnits`, `libraryDirs`）で対応しており、
++この 10 件はすべて JS ドライバ経由でネイティブと同じ出力になることを確認しています（下の 2. に含まれるもの＋個別確認 3 件）。
++これらを除くと、すべてネイティブと同じ結果でした（LXT/LXT2/FST 出力のテストを含む。ivtest は波形ファイルの中身までは
++比べないので、中身は 3. で別に確認）。
++
++## 2. ブラウザと同じ経路（`iverilog-wasm.js`、メモリ上 FS）
++
++`ivtest` の通常・コンパイルエラー・コンパイルのみのテスト（`regress-vlg/sv/ivl1.list` のうち、ドライバが扱う
++オプション `-g -D -I -s -y -Y -u -Wall` と plusarg だけを使うもの）を、ネイティブ（`iverilog` + `vvp`）と
++`iverilog-node.js --run` の両方で実行し、標準出力・標準エラーをファイルパスの表記だけ揃えて比較しました。
++
++- 対象 2785 件: 一致 2784 件、不一致 1 件
++- 不一致の 1 件は `simparam`（`$simparam` で CPU のワード長と作業ディレクトリを表示するテスト）。
++  WebAssembly は 32 ビットで作業ディレクトリは `/work` なので、違って当然の箇所です。
++- 比較では、ネイティブのドライバだけが出す 1 行（`errors compiling Verilog program.`）と `VCD info:` の行を除いています。
++
++## 3. 個別に確かめたこと
++
++- 符号付き/実数のシステム関数（`$random`, `$sqrt`, `$realtime`）: ネイティブと同じ値
++  （`ivl` にも VPI モジュールをリンクしてあるため）。
++- 波形ファイル（ブラウザ経路、カウンタのテストベンチ）: VCD は日付行以外、LXT と LXT2 はバイト単位でネイティブと一致。
++  FST はヘッダーの日時（3 バイト）以外一致し、fstapi のリーダーで読み戻した階層・値変化も一致。
++  ※ 1. で使ったテスト用の NODERAWFS ビルドでは LXT/LXT2/FST のファイルの中身が壊れます（NODERAWFS の `dup()` が
++  ファイルを切り詰めて開き直すため）。ivtest の判定には影響せず、ブラウザ用ビルドにも関係しません。
++- Shift_JIS の文字列を含むソース: `$display` の出力がバイト単位でネイティブと一致。
++- ブラウザ（ヘッドレス Chromium）: デモでコンパイル＋実行、コンパイルエラーの表示、無限ループの Stop を確認。
++  初回（wasm のコンパイル込み）約 0.3 秒、2 回目以降は小さな例で約 35 ms。
++- 速度: 8 レーンの LFSR を 30 万クロック回すテストベンチで、ネイティブ `vvp` 2.0 秒に対して WebAssembly 3.6 秒（約 1.8 倍）。
++- パッチを新しい clone（`1a23d1ffd`）に `git apply` し、`wasm/build.sh` だけでビルドできることを確認（2 コアで約 5 分）。
+diff --git a/wasm/build.sh b/wasm/build.sh
+new file mode 100755
+index 000000000..6ad8c47fe
+--- /dev/null
++++ b/wasm/build.sh
+@@ -0,0 +1,178 @@
++#!/usr/bin/env bash
++#
++# Build Icarus Verilog's three programs (ivlpp, ivl, vvp) to WebAssembly.
++#
++#   source /path/to/emsdk/emsdk_env.sh      # or any emcc on PATH
++#   wasm/build.sh [build-dir]
++#
++# Output: <build-dir>/dist/{ivlpp,ivl,vvp}.{js,wasm} plus the JS driver.
++# With NODE_CLI=1 it also builds <build-dir>/node-cli/, a set of
++# NODERAWFS builds with iverilog-style wrapper scripts, used to run the
++# ivtest regression suite against the WebAssembly binaries.
++#
++# How the port works (see wasm/README.md):
++#  - configure cross-compiles for wasm32-unknown-emscripten; the host C
++#    compiler (CC_FOR_BUILD) builds the draw_tt helper that makes tables.cc.
++#  - There is no dlopen() in the browser, so tgt-vvp is linked into ivl and
++#    the VPI modules into vvp (and into ivl, which runs their startup
++#    routines to learn system function return types). ivl_dlfcn.h looks
++#    names up in a static table (wasm/static_modules_*.c) instead.
++#  - There are no child processes either, so the iverilog driver is
++#    replaced by wasm/iverilog-wasm.js, which runs ivlpp -> ivl -> vvp.
++#
++set -euo pipefail
++
++SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
++BUILD=$(mkdir -p "${1:-$SRC/build-wasm}" && cd "${1:-$SRC/build-wasm}" && pwd)
++DIST="$BUILD/dist"
++JOBS=${JOBS:-$(nproc 2>/dev/null || echo 2)}
++OPT=${OPT:--O2}
++MK="$SRC/wasm/vpi-static.mk"
++
++command -v emcc >/dev/null || { echo "emcc not found: source emsdk_env.sh first" >&2; exit 1; }
++EMVER=$(emcc -dumpversion)
++echo "== emcc $EMVER, source $SRC, build $BUILD"
++
++# Emscripten renamed TOTAL_STACK to STACK_SIZE in 3.1.25.
++ver_ge() { [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]; }
++if ver_ge "$EMVER" 3.1.25; then STACK=STACK_SIZE; else STACK=TOTAL_STACK; fi
++
++# 0. zlib and bzip2, for the FST/LXT2/LXT waveform writers (VCD needs neither).
++#    Built from source so that it works the same with any Emscripten version.
++#    WITH_ZLIB=0 skips this.
++DEPS="$BUILD/deps"
++CONF_DEPS=()
++LINK_DEPS=""
++if [ "${WITH_ZLIB:-1}" = 1 ]; then
++    if [ ! -f "$DEPS/lib/libz.a" ] || [ ! -f "$DEPS/lib/libbz2.a" ]; then
++        echo "== building zlib and bzip2"
++        mkdir -p "$DEPS/src" "$DEPS/include" "$DEPS/lib"
++        [ -d "$DEPS/src/zlib" ] || git clone -q --depth 1 --branch v1.3.1 \
++            https://github.com/madler/zlib.git "$DEPS/src/zlib"
++        [ -d "$DEPS/src/bzip2" ] || git clone -q --depth 1 --branch bzip2-1.0.8 \
++            https://github.com/libarchive/bzip2.git "$DEPS/src/bzip2"
++        (cd "$DEPS/src/zlib" &&
++         for f in adler32 compress crc32 deflate gzclose gzlib gzread gzwrite \
++                  infback inffast inflate inftrees trees uncompr zutil; do
++             emcc $OPT -DHAVE_UNISTD_H -DHAVE_STDARG_H -c $f.c -o $f.o; done &&
++         emar rcs "$DEPS/lib/libz.a" *.o && cp zlib.h zconf.h "$DEPS/include/")
++        (cd "$DEPS/src/bzip2" &&
++         for f in blocksort huffman crctable randtable compress decompress bzlib; do
++             emcc $OPT -c $f.c -o $f.o; done &&
++         emar rcs "$DEPS/lib/libbz2.a" *.o && cp bzlib.h "$DEPS/include/")
++    fi
++    CONF_DEPS=(CPPFLAGS="-I$DEPS/include" LDFLAGS="-L$DEPS/lib")
++    LINK_DEPS="-L$DEPS/lib -lz -lbz2"
++fi
++
++# 1. configure
++if [ ! -x "$SRC/configure" ]; then (cd "$SRC" && sh autoconf.sh); fi
++cd "$BUILD"
++if [ ! -f Makefile ]; then
++    emconfigure "$SRC/configure" \
++        --host=wasm32-unknown-emscripten --build="$(sh "$SRC/config.guess")" \
++        CC_FOR_BUILD="${CC_FOR_BUILD:-cc}" CFLAGS="$OPT" CXXFLAGS="$OPT" ${CONF_DEPS[@]+"${CONF_DEPS[@]}"} \
++        > configure.log 2>&1 || { tail -30 configure.log; exit 1; }
++fi
++grep -q "gzwrite in -lz... yes" configure.log && echo "== zlib found: FST/LXT2 enabled" || true
++
++# print the value of a make variable in directory $1
++mkvar() { make -s -C "$1" -f Makefile -f "$MK" "print-$2"; }
++prefixed() { local d=$1; shift; for o in "$@"; do printf '%s/%s ' "$d" "$o"; done; }
++
++# 2. compile objects (only objects: the Makefiles' own link steps assume dlopen)
++echo "== compiling (make -j$JOBS)"
++emmake make -j"$JOBS" version_tag.h $(mkvar . O) > make.log 2>&1 || { tail -30 make.log; exit 1; }
++for d in ivlpp tgt-vvp vvp; do
++    emmake make -C $d -j"$JOBS" $(mkvar $d O) $( [ $d = vvp ] && mkvar vvp VVP_OBJ ) \
++        >> make.log 2>&1 || { tail -30 make.log; exit 1; }
++done
++VPI_SETS="O OPP V2005 VA_MATH V2009 VHDL_SYS VHDL_TEXTIO"
++uniq_words() { tr ' ' '\n' | awk 'NF && !seen[$0]++' | tr '\n' ' '; }
++VPI_IVL=$(for v in $VPI_SETS; do mkvar vpi $v; done | uniq_words)
++VPI_VVP=$(for v in $VPI_SETS VPI_DEBUG; do mkvar vpi $v; done | uniq_words)
++emmake make -C vpi -f Makefile -f "$MK" -j"$JOBS" $VPI_VVP >> make.log 2>&1 \
++    || { tail -30 make.log; exit 1; }
++
++# 3. static module tables, and (for old Emscripten only) a main() export shim
++mkdir -p "$DIST" obj-wasm
++emcc $OPT -I. -I"$SRC" -DHAVE_CONFIG_H -c "$SRC/wasm/static_modules_ivl.c" -o obj-wasm/static_modules_ivl.o
++emcc $OPT -I. -I"$SRC" -DHAVE_CONFIG_H -c "$SRC/wasm/static_modules_vvp.c" -o obj-wasm/static_modules_vvp.o
++emcc $OPT -c "$SRC/wasm/dup_offset.c" -o obj-wasm/dup_offset.o      # see the file
++
++# LLVM names main(argc, argv) "__main_argc_argv"; Emscripten releases that
++# predate this (e.g. Debian/Ubuntu's 3.1.6 with LLVM 15) then find no main.
++SHIM=""
++printf 'int main(int c, char**v){(void)v; return c;}\n' > obj-wasm/probe.c
++emcc obj-wasm/probe.c -o obj-wasm/probe.js 2>/dev/null
++if ! grep -q '__main_argc_argv' obj-wasm/probe.js && ! node -e \
++     "process.exit(WebAssembly.Module.exports(new WebAssembly.Module(require('fs').readFileSync('obj-wasm/probe.wasm'))).some(e=>e.name==='main')?0:1)"; then
++    echo "== old Emscripten: adding main() export shim"
++    emcc $OPT -c "$SRC/wasm/main_export_shim.c" -o obj-wasm/main_export_shim.o
++    SHIM=obj-wasm/main_export_shim.o
++fi
++
++IVL_OBJS="$(mkvar . O) $(prefixed tgt-vvp $(mkvar tgt-vvp O)) $(prefixed vpi $VPI_IVL) obj-wasm/static_modules_ivl.o $SHIM $LINK_DEPS"
++VVP_OBJS="$(prefixed vvp $(mkvar vvp VVP_OBJ)) $(prefixed vpi $VPI_VVP) obj-wasm/static_modules_vvp.o obj-wasm/dup_offset.o $SHIM $LINK_DEPS"
++IVLPP_OBJS="$(prefixed ivlpp $(mkvar ivlpp O)) $SHIM"
++
++COMMON="$OPT -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=33554432 -s$STACK=8388608 -sEXIT_RUNTIME=1"
++
++# 4. link: browser/Node modules (factory functions createIvlpp/createIvl/createVvp)
++LIB="$COMMON -sMODULARIZE=1 -sINVOKE_RUN=0 -sFORCE_FILESYSTEM=1 -sENVIRONMENT=web,worker,node"
++LIB="$LIB -sEXPORTED_RUNTIME_METHODS=[FS,callMain]"
++# As a library in Node, do not install process-wide exit/rejection handlers
++# (settings that older Emscripten versions default to on).
++if emcc obj-wasm/probe.c -sNODEJS_CATCH_EXIT=0 -sNODEJS_CATCH_REJECTION=0 -o obj-wasm/probe2.js 2>/dev/null; then
++    LIB="$LIB -sNODEJS_CATCH_EXIT=0 -sNODEJS_CATCH_REJECTION=0"
++fi
++echo "== linking dist/"
++emcc $LIB -sEXPORT_NAME=createIvlpp -o "$DIST/ivlpp.js" $IVLPP_OBJS
++em++ $LIB -sEXPORT_NAME=createIvl   -o "$DIST/ivl.js"   $IVL_OBJS
++em++ $LIB -sEXPORT_NAME=createVvp   -o "$DIST/vvp.js"   $VVP_OBJS
++cp "$SRC/wasm/iverilog-wasm.js" "$SRC/wasm/iverilog-node.js" "$DIST/"
++[ -d "$SRC/wasm/demo" ] && cp "$SRC/wasm/demo/"* "$DIST/"
++
++# The .wasm files are GPL object code: put the corresponding source next to
++# them (the upstream commit plus every local change, as one patch), so that
++# publishing dist/ also publishes its source.
++if git -C "$SRC" rev-parse HEAD >/dev/null 2>&1; then
++    {
++        echo "Icarus Verilog, https://github.com/steveicarus/iverilog"
++        echo "commit $(git -C "$SRC" rev-parse HEAD), plus the changes below."
++        echo "Apply with: git checkout <commit> && git apply SOURCE.patch; build with wasm/build.sh"
++        echo
++        git -C "$SRC" diff HEAD
++        for f in $(git -C "$SRC" ls-files --others --exclude-standard -- wasm); do
++            (cd "$SRC" && git diff --no-index -- /dev/null "$f") || true
++        done
++    } > "$DIST/SOURCE.patch"
++fi
++
++# 5. optional: command line builds on the real file system, for ivtest
++if [ "${NODE_CLI:-0}" = 1 ]; then
++    echo "== linking node-cli/"
++    CLI="$BUILD/node-cli"; mkdir -p "$CLI/lib/ivl/include"
++    RAW="$COMMON -sNODERAWFS=1 -sENVIRONMENT=node"
++    emcc $RAW -o "$CLI/ivlpp.js" $IVLPP_OBJS
++    em++ $RAW -o "$CLI/ivl.js"   $IVL_OBJS
++    em++ $RAW -o "$CLI/vvp.js"   $VVP_OBJS
++    # Old Emscripten glue tries fetch() on a file path under Node >= 18.
++    NODE="node --stack-size=4000"
++    ver_ge "$EMVER" 3.1.30 || NODE="$NODE --no-experimental-fetch"
++    for p in ivlpp ivl; do
++        printf '#!/bin/sh\nexec %s "%s/%s.js" "$@"\n' "$NODE" "$CLI" $p > "$CLI/lib/ivl/$p"
++    done
++    printf '#!/bin/sh\nexec %s "%s/vvp.js" "$@"\n' "$NODE" "$CLI" > "$CLI/vvp"
++    make -s -C tgt-vvp vvp.conf vvp-s.conf && cp tgt-vvp/vvp.conf tgt-vvp/vvp-s.conf "$CLI/lib/ivl/"
++    cp "$SRC/constants.vams" "$SRC/disciplines.vams" "$CLI/lib/ivl/include/"
++    # The native driver checks that a module given with -m exists as a file;
++    # the modules themselves are linked into vvp.
++    for m in system vhdl_sys vhdl_textio v2005_math va_math v2009 vpi_debug; do
++        : > "$CLI/lib/ivl/$m.vpi"
++    done
++    chmod +x "$CLI/vvp" "$CLI/lib/ivl/ivlpp" "$CLI/lib/ivl/ivl"
++    echo "   use with a native driver: iverilog -B$CLI/lib/ivl ...; $CLI/vvp a.out"
++fi
++
++ls -l "$DIST"
+diff --git a/wasm/demo/index.html b/wasm/demo/index.html
+new file mode 100644
+index 000000000..8de9b9500
+--- /dev/null
++++ b/wasm/demo/index.html
+@@ -0,0 +1,370 @@
++<!doctype html>
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Icarus Verilog WASM</title>
++<style>
++  :root {
++    --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66;
++    --line: #dcdcd6; --accent: #2f6fd6; --ok: #1f8a4c; --err: #c23b30;
++    --wave: #1f8a4c; --wave-x: #c23b30; --wave-z: #b07d12; --bus: #2f6fd6;
++    --grid: #ecece6; --code-bg: #fbfbf9;
++  }
++  @media (prefers-color-scheme: dark) {
++    :root:not([data-theme="light"]) {
++      --bg: #171716; --panel: #1f1f1e; --ink: #e9e9e4; --muted: #9a9a93;
++      --line: #34342f; --accent: #6ea2ff; --ok: #4cc27f; --err: #ff7a6e;
++      --wave: #4cc27f; --wave-x: #ff7a6e; --wave-z: #e0b04a; --bus: #6ea2ff;
++      --grid: #262624; --code-bg: #1a1a19;
++    }
++  }
++  :root[data-theme="dark"] {
++    --bg: #171716; --panel: #1f1f1e; --ink: #e9e9e4; --muted: #9a9a93;
++    --line: #34342f; --accent: #6ea2ff; --ok: #4cc27f; --err: #ff7a6e;
++    --wave: #4cc27f; --wave-x: #ff7a6e; --wave-z: #e0b04a; --bus: #6ea2ff;
++    --grid: #262624; --code-bg: #1a1a19;
++  }
++  * { box-sizing: border-box; }
++  body { margin: 0; background: var(--bg); color: var(--ink);
++         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
++  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
++           padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
++  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
++  header .sub { color: var(--muted); font-size: 12px; }
++  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
++  button, select { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line);
++                   background: var(--panel); color: var(--ink); cursor: pointer; }
++  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
++  button:disabled { opacity: .5; cursor: default; }
++  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 12px 16px; }
++  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
++  .pane { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
++          display: flex; flex-direction: column; min-width: 0; }
++  .pane h2 { font-size: 12px; font-weight: 600; margin: 0; padding: 8px 12px; color: var(--muted);
++             border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
++  textarea { width: 100%; border: 0; resize: vertical; padding: 10px 12px; background: var(--code-bg);
++             color: var(--ink); font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
++             tab-size: 2; outline: none; border-radius: 0 0 8px 8px; }
++  #design { min-height: 220px; } #tb { min-height: 260px; }
++  .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
++  #console { margin: 0; padding: 10px 12px; min-height: 160px; max-height: 300px; overflow: auto;
++             font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap;
++             word-break: break-word; }
++  #console .stderr { color: var(--err); } #console .info { color: var(--muted); }
++  #status { font-weight: 500; } #status.ok { color: var(--ok); } #status.err { color: var(--err); }
++  #waves { width: 100%; display: block; }
++  .wavebox { overflow-x: hidden; padding: 4px 0 8px; }
++  .empty { color: var(--muted); padding: 16px 12px; font-size: 13px; }
++  footer { color: var(--muted); font-size: 12px; padding: 4px 16px 20px; }
++  a { color: var(--accent); }
++</style>
++</head>
++<body>
++<header>
++  <div>
++    <h1>Icarus Verilog in WebAssembly</h1>
++    <div class="sub">ivlpp → ivl → vvp, all in a Web Worker in this page</div>
++  </div>
++  <div class="controls">
++    <select id="example" aria-label="Example">
++      <option value="counter">Example: counter</option>
++      <option value="real">Example: real and $random</option>
++      <option value="forever">Example: endless loop (try Stop)</option>
++    </select>
++    <select id="gen" aria-label="Language generation">
++      <option value="2005">-g2005</option>
++      <option value="2009">-g2009</option>
++      <option value="2012" selected>-g2012</option>
++    </select>
++    <button id="stop" disabled>Stop</button>
++    <button id="run" class="primary">Compile &amp; run</button>
++  </div>
++</header>
++<main>
++  <div class="col">
++    <section class="pane"><h2><span>design.v</span></h2><textarea id="design" spellcheck="false"></textarea></section>
++    <section class="pane"><h2><span>tb.v</span></h2><textarea id="tb" spellcheck="false"></textarea></section>
++  </div>
++  <div class="col">
++    <section class="pane"><h2><span>Console</span><span id="status">Loading…</span></h2><pre id="console"></pre></section>
++    <section class="pane"><h2><span>Waveform</span><a id="dl" href="#" download="dump.vcd" hidden>Download VCD</a></h2>
++      <div class="wavebox" id="wavebox"><div class="empty">Run a testbench with $dumpfile/$dumpvars to see waveforms.</div></div>
++    </section>
++  </div>
++</main>
++<footer>Icarus Verilog © Stephen Williams and contributors, licensed under the GNU GPL version 2 or later.
++  This page runs a WebAssembly build of it. Source: the upstream repository plus
++  <a href="SOURCE.patch">SOURCE.patch</a> (the changes and build script used for this build).</footer>
++
++<script>
++const EXAMPLES = {
++  counter: {
++    design: `module counter #(parameter W = 4) (
++  input  wire         clk,
++  input  wire         rst,
++  output reg  [W-1:0] q
++);
++  always @(posedge clk or posedge rst)
++    if (rst) q <= 0;
++    else     q <= q + 1'b1;
++endmodule
++`,
++    tb: `\`timescale 1ns/1ps
++module tb;
++  reg clk = 0, rst = 1;
++  wire [3:0] q;
++  counter dut(.clk(clk), .rst(rst), .q(q));
++
++  always #5 clk = ~clk;
++
++  initial begin
++    $dumpfile("dump.vcd");
++    $dumpvars(0, tb);
++    #12 rst = 0;
++    repeat (20) @(posedge clk);
++    $display("q = %0d at %0t", q, $time);
++    $finish;
++  end
++endmodule
++`},
++  real: {
++    design: `module scale(input real x, output real y);
++  assign y = $sqrt(x) * 2.0;
++endmodule
++`,
++    tb: `module tb;
++  real x, y;
++  integer seed = 7, r, i;
++  scale dut(.x(x), .y(y));
++  initial begin
++    $dumpfile("dump.vcd");
++    $dumpvars(0, tb);
++    for (i = 0; i < 6; i = i + 1) begin
++      x = i * 1.5;
++      r = $random(seed) % 10;     // signed: can be negative
++      #1 $display("x=%4.1f  y=%8.5f  r=%0d", x, y, r);
++    end
++  end
++endmodule
++`},
++  forever: {
++    design: `module blink(input clk, output reg led = 0);
++  always @(posedge clk) led <= ~led;
++endmodule
++`,
++    tb: `module tb;
++  reg clk = 0;
++  wire led;
++  blink dut(.clk(clk), .led(led));
++  always #1 clk = ~clk;          // no $finish: runs until you press Stop
++  initial begin
++    $display("running forever...");
++    forever #1000000 $display("t = %0t", $time);
++  end
++endmodule
++`}
++};
++
++const $ = (s) => document.querySelector(s);
++const con = $('#console'), status = $('#status');
++let worker = null, runId = 0, lastVcdUrl = null, waveObserver = null;
++
++function log(text, cls) {
++  const span = document.createElement('span');
++  if (cls) span.className = cls;
++  span.textContent = text + '\n';
++  con.appendChild(span);
++  if (con.childNodes.length > 2000) con.removeChild(con.firstChild);
++  con.scrollTop = con.scrollHeight;
++}
++function setStatus(text, cls) { status.textContent = text; status.className = cls || ''; }
++
++function startWorker() {
++  worker = new Worker('worker.js');
++  worker.onmessage = (e) => {
++    const m = e.data;
++    if (m.id !== runId) return;
++    if (m.type === 'line') log(m.text, m.stream === 'stderr' ? 'stderr' : '');
++    else if (m.type === 'error') { log(m.message, 'stderr'); finish(false, 'Error'); }
++    else if (m.type === 'done') {
++      const t = m.compileMs != null ? `compile ${m.compileMs.toFixed(0)} ms, total ${m.ms.toFixed(0)} ms`
++                                    : `${m.ms.toFixed(0)} ms`;
++      if (!m.ok) log(`${m.stage} exited with status ${m.rc}`, 'info');
++      else log(`finished (${t})`, 'info');
++      if (m.vcd) showVcd(m.vcd, m.vcdName);
++      finish(m.ok, m.ok ? 'Done' : (m.stage === 'vvp' ? 'Simulation error' : 'Compile error'));
++    }
++  };
++  worker.onerror = (e) => { log(String(e.message || e), 'stderr'); finish(false, 'Worker error'); };
++}
++
++function finish(ok, text) {
++  $('#run').disabled = false; $('#stop').disabled = true;
++  setStatus(text, ok ? 'ok' : 'err');
++}
++
++function run() {
++  con.textContent = '';
++  runId += 1;
++  $('#run').disabled = true; $('#stop').disabled = false;
++  setStatus('Running…');
++  worker.postMessage({ id: runId, generation: $('#gen').value,
++    files: { 'design.v': $('#design').value, 'tb.v': $('#tb').value } });
++}
++
++function stop() {
++  worker.terminate();            // the only way to interrupt a running wasm call
++  startWorker();
++  log('stopped', 'info');
++  finish(false, 'Stopped');
++}
++
++function loadExample(name) {
++  $('#design').value = EXAMPLES[name].design;
++  $('#tb').value = EXAMPLES[name].tb;
++}
++
++/* ---------- minimal VCD parser and waveform drawing ---------- */
++function parseVcd(text) {
++  const tok = text.split(/\s+/);
++  const vars = [], byId = new Map(), scope = [];
++  let i = 0, t = 0, tmax = 0, timescale = '';
++  const skipToEnd = () => { const out = []; while (i < tok.length && tok[i] !== '$end') out.push(tok[i++]); i++; return out; };
++  const change = (id, v) => { const list = byId.get(id); if (list) for (const vr of list) vr.ch.push([t, v]); };
++  while (i < tok.length) {
++    const w = tok[i++];
++    if (!w) continue;
++    if (w === '$scope') { const a = skipToEnd(); scope.push(a[1]); }
++    else if (w === '$upscope') { skipToEnd(); scope.pop(); }
++    else if (w === '$var') {
++      const a = skipToEnd();
++      const vr = { type: a[0], width: +a[1], id: a[2], name: scope.concat(a[3]).join('.'), ch: [] };
++      vars.push(vr);
++      if (!byId.has(vr.id)) byId.set(vr.id, []);
++      byId.get(vr.id).push(vr);
++    }
++    else if (w === '$timescale') timescale = skipToEnd().join('');
++    else if (w === '$dumpvars' || w === '$dumpall' || w === '$dumpon' || w === '$dumpoff' || w === '$end') { /* changes follow */ }
++    else if (w[0] === '$') skipToEnd();
++    else if (w[0] === '#') { t = parseInt(w.slice(1), 10); if (t > tmax) tmax = t; }
++    else if (/^[bBrR]/.test(w)) change(tok[i++], w.slice(1));
++    else change(w.slice(1), w[0]);
++  }
++  return { vars, tmax, timescale };
++}
++
++function fmtBus(v, vr) {
++  if (vr.type === 'real') { const n = parseFloat(v); return Number.isFinite(n) ? String(+n.toPrecision(6)) : v; }
++  if (/^[01]+$/.test(v)) {
++    if (vr.type === 'integer')                       // integers as signed decimal
++      return String(v.length === 32 && v[0] === '1' ? parseInt(v, 2) - 2 ** 32 : parseInt(v, 2));
++    return BigInt('0b' + v).toString(16);          // other vectors in hex
++  }
++  return v.length > 12 ? v.slice(0, 11) + '…' : v;
++}
++
++// Tick step of 1, 2 or 5 times a power of ten, and a label in a readable unit.
++function niceStep(span, n) {
++  const raw = span / n, p = 10 ** Math.floor(Math.log10(raw)), f = raw / p;
++  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
++}
++function timeLabel(t, timescale) {
++  const m = /^(\d+)(s|ms|us|ns|ps|fs)$/.exec(timescale || '1s') || [0, '1', 's'];
++  const exp = { s: 0, ms: -3, us: -6, ns: -9, ps: -12, fs: -15 };
++  const units = ['s', 'ms', 'us', 'ns', 'ps', 'fs'];
++  const sec = t * (+m[1]) * 10 ** exp[m[2]];
++  if (sec === 0) return '0';
++  for (const u of units) {
++    const v = sec / 10 ** exp[u];
++    if (Math.abs(v) >= 1) return +v.toPrecision(4) + ' ' + u;
++  }
++  return +(sec / 1e-15).toPrecision(4) + ' fs';
++}
++
++function showVcd(text, name) {
++  if (lastVcdUrl) URL.revokeObjectURL(lastVcdUrl);
++  lastVcdUrl = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
++  const dl = $('#dl'); dl.href = lastVcdUrl; dl.download = name || 'dump.vcd'; dl.hidden = false;
++  const vcd = parseVcd(text);
++  // one row per distinct signal (a port and the net it is connected to share an id)
++  const seen = new Set(), rows = [];
++  for (const vr of vcd.vars) { if (!seen.has(vr.id)) { seen.add(vr.id); rows.push(vr); } }
++  const box = $('#wavebox');
++  box.innerHTML = '';
++  if (!rows.length) { box.innerHTML = '<div class="empty">The VCD file has no signals.</div>'; return; }
++  const canvas = document.createElement('canvas');
++  canvas.id = 'waves';
++  box.appendChild(canvas);
++  const draw = () => { if (canvas.isConnected) drawWaves(canvas, rows, vcd); };
++  draw();
++  if (waveObserver) waveObserver.disconnect();
++  waveObserver = new ResizeObserver(draw);
++  waveObserver.observe(box);
++}
++
++function drawWaves(canvas, rows, vcd) {
++  const css = getComputedStyle(document.documentElement);
++  const col = (n) => css.getPropertyValue(n).trim();
++  const W = canvas.parentElement.clientWidth, rowH = 24, top = 22;
++  const H = top + rows.length * rowH + 4, dpr = window.devicePixelRatio || 1;
++  canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.height = H + 'px';
++  const g = canvas.getContext('2d');
++  g.scale(dpr, dpr);
++  g.font = '11.5px ui-monospace, Menlo, Consolas, monospace';
++  const nameW = Math.min(170, Math.max(90, W * 0.28)), x0 = nameW + 6, x1 = W - 8;
++  const tmax = Math.max(1, vcd.tmax), X = (t) => x0 + (x1 - x0) * t / tmax;
++  // time axis with round tick values
++  g.fillStyle = col('--muted'); g.strokeStyle = col('--grid'); g.lineWidth = 1;
++  const step = niceStep(tmax, Math.max(2, Math.floor((x1 - x0) / 90)));
++  g.textAlign = 'center';
++  for (let t = 0; t <= tmax + 1e-9; t += step) {
++    const x = X(t);
++    g.beginPath(); g.moveTo(Math.round(x) + .5, top - 4); g.lineTo(Math.round(x) + .5, H); g.stroke();
++    g.fillText(timeLabel(t, vcd.timescale), Math.min(Math.max(x, x0 + 12), x1 - 16), 12);
++  }
++  g.textAlign = 'left';
++  rows.forEach((vr, r) => {
++    const yT = top + r * rowH + 4, yB = yT + rowH - 8, yM = (yT + yB) / 2;
++    g.fillStyle = col('--ink');
++    let label = vr.name;
++    while (g.measureText(label).width > nameW - 8 && label.length > 4) label = '…' + label.slice(2);
++    g.fillText(label, 4, yM + 4);
++    const ch = vr.ch;
++    for (let k = 0; k < ch.length; k++) {
++      const [t, v] = ch[k], tn = k + 1 < ch.length ? ch[k + 1][0] : tmax;
++      const xa = X(t), xb = X(tn);
++      if (xb < xa) continue;
++      if (vr.width === 1 && vr.type !== 'real' && v.length === 1) {
++        const c = v === '1' ? yT : v === '0' ? yB : yM;
++        g.strokeStyle = v === 'x' || v === 'X' ? col('--wave-x') : v === 'z' || v === 'Z' ? col('--wave-z') : col('--wave');
++        g.lineWidth = 1.5;
++        g.beginPath();
++        if (k > 0) { const pv = ch[k - 1][1]; const pc = pv === '1' ? yT : pv === '0' ? yB : yM; g.moveTo(xa, pc); g.lineTo(xa, c); }
++        else g.moveTo(xa, c);
++        g.lineTo(xb, c); g.stroke();
++        if (v === 'x' || v === 'X') { g.fillStyle = col('--wave-x'); g.globalAlpha = .18; g.fillRect(xa, yT, xb - xa, yB - yT); g.globalAlpha = 1; }
++      } else {
++        const bad = /[xXzZ]/.test(v);
++        g.strokeStyle = bad ? col('--wave-x') : col('--bus'); g.lineWidth = 1.2;
++        const d = Math.min(3, (xb - xa) / 2);
++        g.beginPath();
++        g.moveTo(xa, yM); g.lineTo(xa + d, yT); g.lineTo(xb - d, yT); g.lineTo(xb, yM);
++        g.lineTo(xb - d, yB); g.lineTo(xa + d, yB); g.closePath(); g.stroke();
++        const s = fmtBus(v, vr);
++        if (g.measureText(s).width < xb - xa - 8) { g.fillStyle = col('--ink'); g.fillText(s, xa + 5, yM + 4); }
++      }
++    }
++  });
++}
++
++$('#run').onclick = run;
++$('#stop').onclick = stop;
++$('#example').onchange = (e) => loadExample(e.target.value);
++document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !$('#run').disabled) run(); });
++loadExample('counter');
++startWorker();
++setStatus('Ready');
++</script>
++</body>
++</html>
+diff --git a/wasm/demo/worker.js b/wasm/demo/worker.js
+new file mode 100644
+index 000000000..14632ed24
+--- /dev/null
++++ b/wasm/demo/worker.js
+@@ -0,0 +1,32 @@
++/*
++ * Web Worker that runs Icarus Verilog (ivlpp -> ivl -> vvp) in WebAssembly.
++ * Running in a worker keeps the page responsive, and an endless simulation
++ * can be stopped with worker.terminate().
++ *
++ * message in:  { id, files: {name: text}, generation, top, args }
++ * messages out: { id, type: 'line', stream, text }
++ *               { id, type: 'done', ok, stage, rc, vcd, vcdName, ms }
++ *               { id, type: 'error', message }
++ */
++importScripts('ivlpp.js', 'ivl.js', 'vvp.js', 'iverilog-wasm.js');
++
++const iv = IverilogWasm.create({ createIvlpp, createIvl, createVvp });
++
++onmessage = async (e) => {
++  const { id, files, generation, top, args } = e.data;
++  const post = (type, data) => postMessage(Object.assign({ id, type }, data));
++  const onLine = (stream, text) => post('line', { stream, text });
++  const t0 = performance.now();
++  try {
++    const c = await iv.compile({ files, generation, top, onLine });
++    if (!c.ok) return post('done', { ok: false, stage: c.stage, rc: c.rc, ms: performance.now() - t0 });
++    const t1 = performance.now();
++    const s = await iv.simulate({ vvp: c.vvp, args, onLine });
++    const vcdName = Object.keys(s.files).find((n) => /\.vcd$/i.test(n));
++    const vcd = vcdName ? new TextDecoder().decode(s.files[vcdName]) : null;
++    post('done', { ok: s.rc === 0, stage: 'vvp', rc: s.rc, vcd, vcdName,
++                   ms: performance.now() - t0, compileMs: t1 - t0 });
++  } catch (err) {
++    post('error', { message: String((err && err.stack) || err) });
++  }
++};
+diff --git a/wasm/dup_offset.c b/wasm/dup_offset.c
+new file mode 100644
+index 000000000..f1d8911a6
+--- /dev/null
++++ b/wasm/dup_offset.c
+@@ -0,0 +1,30 @@
++/*
++ * dup() for Emscripten builds of vvp.
++ *
++ * The LXT, LXT2 and FST writers (vpi/lxt_write.c, vpi/lxt2_write.c,
++ * vpi/fstapi.c) write compressed sections through gzdopen(dup(fd)) and
++ * expect the new descriptor to start at the current file offset, as the
++ * POSIX dup() does. Emscripten's dup() reopens the file instead, and in
++ * some versions the new descriptor starts at offset 0, which overwrites
++ * the start of the file. Linking this file makes dup() carry the offset
++ * over. (The writers seek to the end again after gzclose(), so a copied
++ * rather than shared offset is enough.)
++ *
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2 of the License, or (at your
++ * option) any later version.
++ */
++#include <fcntl.h>
++#include <unistd.h>
++
++int dup(int fd)
++{
++      int nfd = fcntl(fd, F_DUPFD, 0);
++      if (nfd >= 0) {
++	    off_t pos = lseek(fd, 0, SEEK_CUR);
++	    if (pos >= 0)
++		  lseek(nfd, pos, SEEK_SET);
++      }
++      return nfd;
++}
+diff --git a/wasm/iverilog-node.js b/wasm/iverilog-node.js
+new file mode 100644
+index 000000000..b823e7ef0
+--- /dev/null
++++ b/wasm/iverilog-node.js
+@@ -0,0 +1,106 @@
++#!/usr/bin/env node
++/*
++ * Command line front end for the WebAssembly build, for testing in Node:
++ *
++ *   node iverilog-node.js [-g2012] [-DNAME[=V]] [-Idir] [-s top] [-y libdir] [-v lib.v]
++ *                         [-u] [-Wall] [-o a.vvp] file.v ...
++ *   node iverilog-node.js --run [same options] [+plusarg ...] [-fst|-lxt2|-none] file.v ...
++ *
++ * Without --run it only compiles (like iverilog). With --run it also
++ * simulates (like vvp) and writes the files the simulation created
++ * (dump.vcd, ...) to the current directory.
++ *
++ * Needs ivlpp.js/.wasm, ivl.js/.wasm, vvp.js/.wasm next to this file (or
++ * in the directory given by IVERILOG_WASM_DIR).
++ */
++'use strict';
++const fs = require('fs');
++const path = require('path');
++
++const dir = path.resolve(process.env.IVERILOG_WASM_DIR || __dirname);
++const IverilogWasm = require('./iverilog-wasm.js');
++const iv = IverilogWasm.create({
++  createIvlpp: require(path.join(dir, 'ivlpp.js')),
++  createIvl: require(path.join(dir, 'ivl.js')),
++  createVvp: require(path.join(dir, 'vvp.js')),
++  locateFile: (f) => path.join(dir, f),
++});
++
++async function main(argv) {
++  const opt = { files: {}, sourceOrder: [], defines: {}, includeDirs: [], top: [] };
++  let out = 'a.out', run = false;
++  const plusargs = [];
++  for (let i = 0; i < argv.length; i++) {
++    const a = argv[i];
++    const val = () => (a.length > 2 ? a.slice(2) : argv[++i]);
++    if (a === '--run') run = true;
++    else if (a.startsWith('-g')) (opt.generation = [].concat(opt.generation || [])).push(a.slice(2));
++    else if (a.startsWith('-D')) { const [k, v] = val().split('='); opt.defines[k] = v === undefined ? true : v; }
++    else if (a.startsWith('-I')) opt.includeDirs.push(val());
++    else if (a.startsWith('-s')) opt.top.push(val());
++    else if (a.startsWith('-o')) out = val();
++    else if (a.startsWith('-v') && a.length > 2 || a === '-v' && argv[i + 1] && !argv[i + 1].startsWith('-')) {
++      const f = val(); opt.files[f] = fs.readFileSync(f); (opt.libraryFiles = opt.libraryFiles || []).push(f);
++    }
++    else if (a.startsWith('-y')) (opt.libraryDirs = opt.libraryDirs || []).push(val());
++    else if (a.startsWith('-Y')) (opt.libraryExts = opt.libraryExts || []).push(val());
++    else if (a === '-Wall') opt.warnings = 'nuidRpsta';   // same letters as the iverilog driver
++    else if (a === '-u') opt.separateUnits = true;
++    else if (a.startsWith('+')) plusargs.push(a);
++    // vvp "extended" arguments go after the .vvp file: -fst, -lxt2, -none, ...
++    else if (/^-(vcd|fst|lxt|lxt2)(-.*)?$|^-none$|^-sdf-/.test(a) || a.startsWith('--vvp-arg='))
++      plusargs.push(a.replace(/^--vvp-arg=/, ''));
++    else { opt.files[a] = fs.readFileSync(a); opt.sourceOrder.push(a); }
++  }
++  // The wasm modules only see the files handed to them, so find the
++  // `include files the sources need (relative to the current directory, the
++  // including file's directory, or a -I directory) and pass those along too.
++  const isFile = (p) => { try { return fs.statSync(p).isFile(); } catch (e) { return false; } };
++  const queue = Object.keys(opt.files);
++  while (queue.length) {
++    const f = queue.shift();
++    const text = String(opt.files[f]);
++    for (const m of text.matchAll(/`include\s+"([^"]+)"/g)) {
++      for (const cand of [m[1], path.join(path.dirname(f), m[1])].concat(opt.includeDirs.map((d) => path.join(d, m[1])))) {
++        const key = path.normalize(cand);
++        if (!opt.files[key] && isFile(key)) { opt.files[key] = fs.readFileSync(key); queue.push(key); }
++      }
++    }
++  }
++  // Write the bytes exactly as the program wrote them (not re-encoded text).
++  const echo = (stream, s, bytes) => {
++    const to = stream === 'stderr' ? process.stderr : process.stdout;
++    to.write(bytes ? Buffer.concat([Buffer.from(bytes), Buffer.from('\n')]) : s + '\n');
++  };
++  opt.onLine = echo;
++  opt.findFile = (f) => (isFile(f) ? fs.readFileSync(f) : null);
++
++  const c = await iv.compile(opt);
++  if (!c.ok) return c.rc || 1;
++  if (!run) { fs.writeFileSync(out, c.vvp); return 0; }
++
++  // Data files for $readmemh, $fopen("r"), $sdf_annotate, ...: every
++  // non-Verilog file (< 4 MB) in the current directory and in the
++  // directories of the source files.
++  const data = {};
++  const dirs = new Set(['.'].concat(opt.sourceOrder.map((f) => path.dirname(f))));
++  for (const d of dirs)
++    for (const n of fs.readdirSync(d)) {
++      const p = d === '.' ? n : path.join(d, n);
++      if (/\.(v|sv|vh|svh|vhd|vhdl|vvp)$/i.test(n) || data[p]) continue;
++      const st = fs.statSync(p);
++      if (st.isFile() && st.size < 4 << 20) data[p] = fs.readFileSync(p);
++    }
++
++  const subdirs = fs.readdirSync('.').filter((n) => { try { return fs.statSync(n).isDirectory(); } catch (e) { return false; } });
++  const s = await iv.simulate({ vvp: c.vvp, files: data, dirs: subdirs, args: plusargs,
++    onLine: echo });
++  for (const [name, bytes] of Object.entries(s.files)) {
++    fs.mkdirSync(path.dirname(name), { recursive: true });
++    fs.writeFileSync(name, bytes);
++  }
++  return s.rc;
++}
++
++main(process.argv.slice(2)).then((rc) => { process.exitCode = rc; },
++  (e) => { console.error(e); process.exitCode = 99; });
+diff --git a/wasm/iverilog-wasm.js b/wasm/iverilog-wasm.js
+new file mode 100644
+index 000000000..1edfa2498
+--- /dev/null
++++ b/wasm/iverilog-wasm.js
+@@ -0,0 +1,388 @@
++/*
++ * iverilog-wasm.js - a small driver for Icarus Verilog built to WebAssembly.
++ *
++ * The native "iverilog" command is a driver that writes a few config files
++ * and then runs "ivlpp | ivl" as child processes; "vvp" then runs the
++ * result. There are no child processes in a browser, so this file does the
++ * driver's job in JavaScript: it writes the same config files into each
++ * module's in-memory filesystem and runs ivlpp.wasm, ivl.wasm and vvp.wasm
++ * one after the other, passing files between them.
++ *
++ * Works in Node (require) and in a browser page or Web Worker (global
++ * IverilogWasm). A Web Worker is recommended in the browser, so that a
++ * long or endless simulation does not freeze the page and can be stopped
++ * with worker.terminate().
++ *
++ *   const iv = IverilogWasm.create({ createIvlpp, createIvl, createVvp });
++ *   const c = await iv.compile({ files: { 'tb.v': src }, generation: '2012' });
++ *   const s = await iv.simulate({ vvp: c.vvp });
++ *   // c.log, s.stdout, s.files['dump.vcd']
++ *
++ * Copyright: this file is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License as
++ * published by the Free Software Foundation; either version 2 of the
++ * License, or (at your option) any later version.
++ */
++(function (root, factory) {
++  if (typeof module === 'object' && module.exports) module.exports = factory();
++  else root.IverilogWasm = factory();
++})(typeof self !== 'undefined' ? self : this, function () {
++  'use strict';
++
++  const WORK = '/work';      // cwd of every module; user files live here
++  const BASE = '/ivl';       // stands in for <prefix>/lib/ivl
++
++  // The contents of tgt-vvp/vvp.conf (the "-C .../vvp.conf" the driver adds)
++  const VVP_CONF = 'functor:cprop\nfunctor:nodangle\nflag:DLL=vvp.tgt\n';
++
++  // -g flags, processed as in driver/main.c (process_generation).
++  // opt.generation is one -g value or a list of them, e.g. ['2012', 'specify'].
++  const GEN_VALUES = ['1995', '2001', '2001-noconfig', '2005', '2005-sv', '2009', '2012', '2017', '2023'];
++  const GEN_FLAGS = {        // flag name -> config key (each takes "x" or "no-x")
++    xtypes: 'xtypes', 'icarus-misc': 'icarus', specify: 'specify', interconnect: 'interconnect',
++    'io-range-error': 'io_range_error', 'strict-ca-eval': 'strict_ca_eval',
++    'strict-expr-width': 'strict_expr_width', 'shared-loop-index': 'shared_loop_index',
++    'allow-real-arg-to-bits': 'allow_real_arg_to_bits', 'verilog-ams': 'verilog_ams',
++    'strict-net-var-declaration': 'strict_net_var', 'strict-parameter-declaration': 'strict_parameter',
++  };
++  function generationLines(opt) {
++    const gen = {
++      generation: '2005', specify: 'no-specify', interconnect: 'no-interconnect',
++      assertions: 'assertions', xtypes: 'xtypes', io_range_error: 'io-range-error',
++      strict_ca_eval: 'no-strict-ca-eval', strict_expr_width: 'no-strict-expr-width',
++      shared_loop_index: 'shared-loop-index', allow_real_arg_to_bits: 'no-allow-real-arg-to-bits',
++      verilog_ams: 'no-verilog-ams', strict_net_var: 'strict-net-var-declaration',
++      strict_parameter: 'strict-parameter-declaration', icarus: 'icarus-misc',
++      std_include: true, relative_include: false,
++    };
++    const list = [].concat(opt.generation == null ? [] : opt.generation);
++    if (opt.specify) list.push('specify');
++    for (const g of list.map(String)) {
++      const neg = g.startsWith('no-'), base = neg ? g.slice(3) : g;
++      if (GEN_VALUES.includes(g)) gen.generation = g;
++      else if (g === '1' || g === '2') Object.assign(gen, { generation: g === '1' ? '1995' : '2001', xtypes: 'no-xtypes', icarus: 'no-icarus-misc' });
++      else if (g === '2x') Object.assign(gen, { generation: '2005', xtypes: 'xtypes', icarus: 'icarus-misc' });
++      else if (GEN_FLAGS[base]) gen[GEN_FLAGS[base]] = g;
++      else if (g === 'assertions' || g === 'supported-assertions' || g === 'no-assertions') gen.assertions = g;
++      else if (base === 'strict-declaration') {
++        gen.strict_net_var = (neg ? 'no-' : '') + 'strict-net-var-declaration';
++        gen.strict_parameter = (neg ? 'no-' : '') + 'strict-parameter-declaration';
++      } else if (base === 'std-include') gen.std_include = !neg;
++      else if (base === 'relative-include') gen.relative_include = !neg;
++      else throw new Error('Unknown/Unsupported Language generation ' + g);
++    }
++    return gen;
++  }
++
++  function iconfigText(opt, outPath) {
++    const g = generationLines(opt);
++    const gen = g.generation;
++    const lines = [];
++    lines.push('basedir:' + BASE);
++    lines.push('module:' + BASE + '/system.vpi');
++    lines.push('module:' + BASE + '/vhdl_sys.vpi');
++    lines.push('module:' + BASE + '/vhdl_textio.vpi');
++    const newer = ['2005', '2009', '2012', '2017', '2023'];
++    if (newer.includes(gen) || g.icarus === 'icarus-misc' || g.verilog_ams === 'verilog-ams')
++      lines.push('module:' + BASE + '/v2005_math.vpi');
++    if (g.verilog_ams === 'verilog-ams' || g.icarus === 'icarus-misc')
++      lines.push('module:' + BASE + '/va_math.vpi');
++    if (['2005-sv', '2009', '2012', '2017', '2023'].includes(gen))
++      lines.push('module:' + BASE + '/v2009.vpi');
++    for (const key of ['generation', 'specify', 'interconnect', 'assertions', 'xtypes',
++      'io_range_error', 'strict_ca_eval', 'strict_expr_width', 'shared_loop_index',
++      'allow_real_arg_to_bits', 'verilog_ams', 'strict_net_var', 'strict_parameter', 'icarus'])
++      lines.push('generation:' + g[key]);
++    lines.push('warnings:' + (opt.warnings != null ? opt.warnings : 'nu'));
++    lines.push('ignore_missing_modules:false');
++    lines.push('out:' + outPath);
++    for (const top of [].concat(opt.top || [])) lines.push('root:' + top);
++    for (const lib of [].concat(opt.libraryFiles || [])) lines.push('library_file:' + lib);
++    for (const [k, v] of Object.entries(opt.parameters || {})) lines.push('defparam:' + k + '=' + v);
++    if (opt.timescale) lines.push('timescale:' + opt.timescale);
++    lines.push('iwidth:32');
++    lines.push('widthcap:65536');
++    // No "ivlpp:" line: ivl cannot start ivlpp as a child process here, so
++    // everything is preprocessed up front (library -y/-v search is not
++    // supported).
++    return lines.join('\n') + '\n';
++  }
++
++  function definesText(opt) {
++    const g = generationLines(opt);
++    const lines = ['D:__ICARUS__=1'];
++    if (g.verilog_ams === 'verilog-ams') lines.push('D:__VAMS_ENABLE__=1');
++    for (const [k, v] of Object.entries(opt.defines || {}))
++      lines.push('D:' + k + (v === true || v == null ? '' : '=' + v));
++    for (const dir of [].concat(opt.includeDirs || [])) lines.push('I:' + dir);
++    if (g.std_include) lines.push('I:' + BASE + '/include');
++    lines.push('relative include:' + (g.relative_include || opt.relativeInclude ? 'true' : 'false'));
++    return lines.join('\n') + '\n';
++  }
++
++  function mkdirp(FS, path) {
++    let cur = '';
++    for (const part of path.split('/').filter(Boolean)) {
++      cur += '/' + part;
++      try { FS.mkdir(cur); } catch (e) { /* exists */ }
++    }
++  }
++
++  function writeFiles(FS, files) {
++    for (const [name, data] of Object.entries(files || {})) {
++      const full = name.startsWith('/') ? name : WORK + '/' + name;
++      mkdirp(FS, full.slice(0, full.lastIndexOf('/')));
++      FS.writeFile(full, data);
++    }
++  }
++
++  function readTree(FS, dir, skip) {
++    const out = {};
++    const walk = (d, rel) => {
++      for (const n of FS.readdir(d)) {
++        if (n === '.' || n === '..') continue;
++        const p = d + '/' + n, r = rel ? rel + '/' + n : n;
++        const st = FS.stat(p);
++        if (FS.isDir(st.mode)) walk(p, r);
++        else if (!skip || !skip(r)) out[r] = FS.readFile(p);
++      }
++    };
++    walk(dir, '');
++    return out;
++  }
++
++  function create(cfg) {
++    const factories = { ivlpp: cfg.createIvlpp, ivl: cfg.createIvl, vvp: cfg.createVvp };
++    const compiled = {};   // name -> Promise<WebAssembly.Module>, compiled once
++
++    function getCompiled(name) {
++      if (!compiled[name]) {
++        const file = name + '.wasm';
++        const url = cfg.locateFile ? cfg.locateFile(file) : file;
++        compiled[name] = (async () => {
++          if (typeof process === 'object' && process.versions && process.versions.node &&
++              typeof window === 'undefined' && typeof importScripts === 'undefined') {
++            const bytes = require('fs').readFileSync(url);
++            return WebAssembly.compile(bytes);
++          }
++          const resp = fetch(url);
++          if (WebAssembly.compileStreaming) {
++            try { return await WebAssembly.compileStreaming(resp); } catch (e) { /* bad MIME type */ }
++          }
++          return WebAssembly.compile(await (await fetch(url)).arrayBuffer());
++        })();
++      }
++      return compiled[name];
++    }
++
++    // stdout/stderr are taken byte by byte and split into lines here, so that
++    // bytes that are not UTF-8 (e.g. Shift_JIS text in a $display) are kept
++    // as they are in stdoutBytes and decoded with cfg.encoding for the lines.
++    const encoding = cfg.encoding || 'utf-8';
++    function lineSplitter(stream, out, raw, onLine) {
++      let buf = [];
++      const decoder = new TextDecoder(encoding);
++      const flush = () => {
++        const bytes = new Uint8Array(buf);
++        const text = decoder.decode(bytes);
++        buf = [];
++        out.push(text);
++        if (onLine) onLine(stream, text, bytes);     // bytes: the line without "\n"
++      };
++      return {
++        put(byte) {
++          if (byte === null || byte === undefined) return;
++          byte &= 0xff;
++          if (raw) raw.push(byte);
++          if (byte === 10) flush(); else buf.push(byte);
++        },
++        end() { if (buf.length) flush(); },
++      };
++    }
++
++    // Run one program to completion in a fresh instance (C globals are not
++    // re-initialised between runs, so instances are never reused).
++    async function runProgram(name, args, setup, onLine) {
++      const out = [], raw = [];
++      const so = lineSplitter('stdout', out, raw, onLine);
++      const se = lineSplitter('stderr', out, null, onLine);
++      const wasmModule = await getCompiled(name);
++      const mod = await factories[name]({
++        noInitialRun: true,
++        thisProgram: name,                       // argv[0], used in some messages
++        // stdin gives EOF (interactive input after $stop); stdout/stderr bytes
++        // go to the line splitters. Marking the streams as terminals keeps C
++        // stdout line buffered, so output arrives line by line while running.
++        preRun: [(m) => {
++          m.FS.init(() => null, so.put, se.put);
++          for (const fd of [1, 2]) {
++            const st = m.FS.getStream(fd);
++            if (st && !st.tty) st.tty = { ops: {} };
++          }
++        }],
++        quit: (status, toThrow) => { throw toThrow; },  // never process.exit() in Node
++        instantiateWasm(imports, receive) {
++          WebAssembly.instantiate(wasmModule, imports).then(
++            (inst) => receive(inst, wasmModule),
++            (err) => { out.push(String(err)); if (onLine) onLine('stderr', String(err)); });
++          return {};
++        },
++      });
++      const FS = mod.FS;
++      mkdirp(FS, WORK);
++      mkdirp(FS, BASE + '/include');
++      FS.chdir(WORK);
++      if (setup) setup(FS);
++      let rc;
++      try { rc = mod.callMain(args); } catch (e) {
++        if (e && typeof e.status === 'number') rc = e.status; else throw e;
++      }
++      so.end(); se.end();
++      return { rc, out, FS, stdoutBytes: new Uint8Array(raw) };
++    }
++
++    // compile({ files, generation, defines, includeDirs, top, warnings, parameters })
++    //   files: { 'name.v': 'source text', 'inc/defs.vh': '...' }
++    //   generation: '2005' (default, as iverilog), '2009', '2012', ... or a
++    //     list of -g values, e.g. ['2012', 'specify']
++    //   warnings: the driver's flag letters, default 'nu'; -Wall is 'nuidRpsta'
++    //   sourceOrder: names to compile, in order (default: every *.v/*.sv file)
++    //   libraryFiles: names in files to use like "iverilog -v": only the
++    //     modules that are instantiated are elaborated.
++    //   libraryDirs / libraryExts: like "iverilog -y dir -Y .v". ivl cannot
++    //     run ivlpp on a library file itself here, so when it reports missing
++    //     modules, <dir>/<module><ext> is added as a library file and the
++    //     compile is repeated.
++    //   separateUnits: like "iverilog -u": each file is its own compilation unit
++    //   findFile(path): optional, returns the contents of a file that is not
++    //     in `files` (or null). Used for library files and for `include files
++    //     the preprocessor could not find, then the compile is repeated.
++    // -> { ok, vvp (Uint8Array), log (string), preprocessed (string) }
++    async function compile(opt) {
++      const dirs = [].concat(opt.libraryDirs || []);
++      const findFile = opt.findFile || opt.findLibraryFile;
++      if (!dirs.length && !findFile) return compileOnce(opt, opt.onLine);
++      const exts = [].concat(opt.libraryExts || ['.v']);
++      const files = Object.assign({}, opt.files);
++      let libs = [].concat(opt.libraryFiles || []);
++      const tried = new Set();
++      const have = async (f) => {
++        if (f in files) return true;
++        if (!findFile || tried.has(f)) return false;
++        tried.add(f);
++        const data = await findFile(f);
++        if (data == null) return false;
++        files[f] = data;
++        return true;
++      };
++      for (let round = 0; ; round += 1) {
++        const res = await compileOnce(Object.assign({}, opt, { files, libraryFiles: libs }), null);
++        let progress = false;
++        if (!res.ok && round < 100) {
++          // `include files that the preprocessor did not find
++          for (const m of res.log.matchAll(/Include file (\S+) not found/g))
++            if (!tried.has(m[1]) && await have(m[1])) progress = true;
++          // modules missing after elaboration: look in the library directories
++          const missing = [...res.log.matchAll(/^\s+(\S+) referenced \d+ times?\.$/gm)].map((m) => m[1]);
++          for (const mod of missing) {
++            search: for (const d of dirs) for (const ext of exts) {
++              const f = (d === '.' || d === '' ? '' : d.replace(/\/+$/, '') + '/') + mod + ext;
++              if (libs.includes(f)) continue;
++              if (await have(f)) { libs = libs.concat(f); progress = true; break search; }
++            }
++          }
++        }
++        if (!progress) {               // final result: now show its output
++          if (opt.onLine) for (const l of res.lines) opt.onLine(l[0], l[1], l[2]);
++          return res;
++        }
++      }
++    }
++
++    async function compileOnce(opt, onLineCb) {
++      const files = opt.files || {};
++      const libs = [].concat(opt.libraryFiles || []);
++      const sources = (opt.sourceOrder ||
++        Object.keys(files).filter((n) => /\.(v|sv|vl|vlg|verilog)$/i.test(n) && !libs.includes(n)))
++        .filter((n) => !libs.includes(n)).concat(libs);
++      const log = [], lines = [];
++      const onLine = (stream, s, bytes) => {
++        // With -o, ivlpp also reports its error count on stderr; when it is
++        // piped into ivl (as the iverilog driver does it) only ivl reports
++        // it ("Preprocessor failed with N error(s)."), so drop this line.
++        if (stream === 'stderr' && /^ivlpp: had \(\d+\) errors\.$/.test(s)) return;
++        lines.push([stream, s, bytes]);
++        if (onLineCb) onLineCb(stream, s, bytes);
++      };
++
++      // 1. ivlpp. Normally all sources go through one pass (so a `define in
++      //    one file is seen by the next), like "ivlpp ... | ivl -- -". With
++      //    separateUnits (iverilog -u) each file is preprocessed on its own
++      //    and becomes its own compilation unit in ivl.
++      const units = opt.separateUnits ? sources.map((f) => [f]) : [sources];
++      const pre = [];                  // [name for ivl, preprocessed text]
++      for (let u = 0; u < units.length; u += 1) {
++        const pp = await runProgram('ivlpp',
++          ['-L', '-F' + WORK + '/.ivl_defines', '-f' + WORK + '/.ivl_sources',
++           '-p' + WORK + '/.ivl_cdefines', '-o' + WORK + '/.ivl_pp.v'],
++          (FS) => {
++            writeFiles(FS, files);
++            writeFiles(FS, opt.includeFiles || {});
++            FS.writeFile(WORK + '/.ivl_defines', definesText(opt));
++            FS.writeFile(WORK + '/.ivl_sources', units[u].join('\n') + '\n');
++          }, onLine);
++        log.push(...pp.out.filter((l) => !/^ivlpp: had \(\d+\) errors\.$/.test(l)));
++        let text = null;
++        try { text = pp.FS.readFile(WORK + '/.ivl_pp.v'); } catch (e) { /* none */ }
++        // On preprocessor errors the output ends with a "// Icarus preprocessor
++        // had (N) errors." line, which ivl reports; so go on to ivl unless
++        // there is no output at all.
++        if (text == null)
++          return { ok: false, stage: 'ivlpp', rc: pp.rc || 1, vvp: null, log: log.join('\n'), lines };
++        // In ivl's file system the preprocessed text takes the source's name,
++        // so that each unit is reported under its own file name.
++        pre.push([opt.separateUnits ? units[u][0] : '.ivl_pp.v', text]);
++      }
++
++      // 2. ivl: parse + elaborate + tgt-vvp code generation
++      const ivl = await runProgram('ivl',
++        ['-C' + WORK + '/.ivl_iconfig', '-C' + BASE + '/vvp.conf', '--'].concat(pre.map((p) => p[0])),
++        (FS) => {
++          FS.writeFile(BASE + '/vvp.conf', VVP_CONF);
++          FS.writeFile(WORK + '/.ivl_iconfig', iconfigText(opt, WORK + '/a.vvp'));
++          writeFiles(FS, Object.fromEntries(pre));
++        }, onLine);
++      log.push(...ivl.out);
++      let vvp = null;
++      try { vvp = ivl.FS.readFile(WORK + '/a.vvp'); } catch (e) { /* none */ }
++      const ok = ivl.rc === 0 && vvp != null;
++      return { ok, stage: ok ? 'done' : 'ivl', rc: ok ? 0 : (ivl.rc || 1), vvp: ok ? vvp : null,
++               log: log.join('\n'), lines,
++               preprocessed: pre.map((p) => new TextDecoder().decode(p[1])).join('') };
++    }
++
++    // simulate({ vvp, files, dirs, args }) -> { rc, stdout, stdoutBytes, files }
++    //   files: data files for $readmemh/$fopen
++    //   args: what follows the .vvp file on the vvp command line: plusargs
++    //     and extended arguments such as '-fst' (FST instead of VCD output)
++    //   vvpFlags: vvp options that go before the file (e.g. '-n')
++    //   dirs: extra (empty) directories to create, e.g. for $dumpfile("out/x.vcd")
++    //   result.files: every file present in the work dir afterwards
++    //   (e.g. 'dump.vcd'), as Uint8Array
++    async function simulate(opt) {
++      const inputNames = new Set(Object.keys(opt.files || {}));
++      const res = await runProgram('vvp', [].concat(opt.vvpFlags || [], [WORK + '/a.vvp'], opt.args || []),
++        (FS) => {
++          for (const d of opt.dirs || []) mkdirp(FS, d.startsWith('/') ? d : WORK + '/' + d);
++          writeFiles(FS, opt.files || {});
++          FS.writeFile(WORK + '/a.vvp', opt.vvp);
++        }, opt.onLine);
++      const outFiles = readTree(res.FS, WORK, (r) => r === 'a.vvp' || (!opt.keepInputs && inputNames.has(r)));
++      return { rc: res.rc, stdout: res.out.join('\n'), stdoutBytes: res.stdoutBytes, files: outFiles };
++    }
++
++    return { compile, simulate, iconfigText, definesText };
++  }
++
++  return { create, VVP_CONF, iconfigText, definesText };
++});
+diff --git a/wasm/main_export_shim.c b/wasm/main_export_shim.c
+new file mode 100644
+index 000000000..cf3440864
+--- /dev/null
++++ b/wasm/main_export_shim.c
+@@ -0,0 +1,6 @@
++/* Emscripten 3.1.6 + LLVM 15 workaround: clang names main(argc, argv)
++   "__main_argc_argv", but this old Emscripten's callMain() looks for an
++   export named "main". Re-export it under that name. */
++extern int __main_argc_argv(int argc, char**argv);
++__attribute__((export_name("main"), used))
++int ivl_wasm_main_shim(int argc, char**argv) { return __main_argc_argv(argc, argv); }
+diff --git a/wasm/static_modules_ivl.c b/wasm/static_modules_ivl.c
+new file mode 100644
+index 000000000..090017340
+--- /dev/null
++++ b/wasm/static_modules_ivl.c
+@@ -0,0 +1,61 @@
++/*
++ * Static module table for ivl (the compiler) in a WebAssembly build.
++ *
++ * ivl normally dlopen()s the code generator (vvp.tgt) and also the VPI
++ * modules, whose vlog_startup_routines[] it runs against stub VPI
++ * functions to learn the return types of system functions ($random is
++ * signed, $realtime/$sqrt are real, ...). With no dlopen() in the
++ * browser, all of them are linked into ivl and listed here.
++ *
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2 of the License, or (at your
++ * option) any later version.
++ */
++# include  "config.h"
++# include  <stdbool.h>
++# include  "ivl_target.h"
++# include  "ivl_dlfcn.h"
++
++/* tgt-vvp entry points */
++extern int target_design(ivl_design_t des);
++extern const char* target_query(const char*key);
++
++static const struct ivl_static_symbol vvp_tgt_symbols[] = {
++      { "target_design", (void*)target_design },
++      { "target_query",  (void*)target_query },
++      { 0, 0 }
++};
++
++typedef void (*startup_routine_t)(void);
++
++extern startup_routine_t vlog_startup_routines_system[];
++extern startup_routine_t vlog_startup_routines_vhdl_sys[];
++extern startup_routine_t vlog_startup_routines_vhdl_textio[];
++extern startup_routine_t vlog_startup_routines_v2005_math[];
++extern startup_routine_t vlog_startup_routines_va_math[];
++extern startup_routine_t vlog_startup_routines_v2009[];
++
++#define VPI_MODULE(n) \
++      static const struct ivl_static_symbol n##_symbols[] = { \
++	    { "vlog_startup_routines", (void*)vlog_startup_routines_##n }, \
++	    { 0, 0 } \
++      };
++
++VPI_MODULE(system)
++VPI_MODULE(vhdl_sys)
++VPI_MODULE(vhdl_textio)
++VPI_MODULE(v2005_math)
++VPI_MODULE(va_math)
++VPI_MODULE(v2009)
++
++const struct ivl_static_module ivl_static_modules[] = {
++      { "vvp",         vvp_tgt_symbols },
++      { "system",      system_symbols },
++      { "vhdl_sys",    vhdl_sys_symbols },
++      { "vhdl_textio", vhdl_textio_symbols },
++      { "v2005_math",  v2005_math_symbols },
++      { "va_math",     va_math_symbols },
++      { "v2009",       v2009_symbols },
++      { 0, 0 }
++};
+diff --git a/wasm/static_modules_vvp.c b/wasm/static_modules_vvp.c
+new file mode 100644
+index 000000000..83c571984
+--- /dev/null
++++ b/wasm/static_modules_vvp.c
+@@ -0,0 +1,52 @@
++/*
++ * Static module table for vvp in a WebAssembly build.
++ *
++ * There is no dlopen() in the browser, so the VPI modules are linked
++ * into vvp. Each module's vlog_startup_routines[] table is compiled
++ * under a module specific name (see build.sh) and listed here, so that
++ * ivl_dlopen("system.vpi") / ivl_dlsym(..., "vlog_startup_routines")
++ * in ivl_dlfcn.h find it.
++ *
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2 of the License, or (at your
++ * option) any later version.
++ */
++# include  "config.h"
++# include  <stdbool.h>
++# include  "ivl_dlfcn.h"
++
++typedef void (*startup_routine_t)(void);
++
++extern startup_routine_t vlog_startup_routines_system[];
++extern startup_routine_t vlog_startup_routines_vhdl_sys[];
++extern startup_routine_t vlog_startup_routines_vhdl_textio[];
++extern startup_routine_t vlog_startup_routines_v2005_math[];
++extern startup_routine_t vlog_startup_routines_va_math[];
++extern startup_routine_t vlog_startup_routines_v2009[];
++extern startup_routine_t vlog_startup_routines_vpi_debug[];
++
++#define VPI_MODULE(n) \
++      static const struct ivl_static_symbol n##_symbols[] = { \
++	    { "vlog_startup_routines", (void*)vlog_startup_routines_##n }, \
++	    { 0, 0 } \
++      };
++
++VPI_MODULE(system)
++VPI_MODULE(vhdl_sys)
++VPI_MODULE(vhdl_textio)
++VPI_MODULE(v2005_math)
++VPI_MODULE(va_math)
++VPI_MODULE(v2009)
++VPI_MODULE(vpi_debug)
++
++const struct ivl_static_module ivl_static_modules[] = {
++      { "system",      system_symbols },
++      { "vhdl_sys",    vhdl_sys_symbols },
++      { "vhdl_textio", vhdl_textio_symbols },
++      { "v2005_math",  v2005_math_symbols },
++      { "va_math",     va_math_symbols },
++      { "v2009",       v2009_symbols },
++      { "vpi_debug",   vpi_debug_symbols },
++      { 0, 0 }
++};
+diff --git a/wasm/vpi-static.mk b/wasm/vpi-static.mk
+new file mode 100644
+index 000000000..aaa1d94ea
+--- /dev/null
++++ b/wasm/vpi-static.mk
+@@ -0,0 +1,16 @@
++# Extra make rules for building the VPI modules for static linking.
++# Each module defines a table named vlog_startup_routines[]; when several
++# modules are linked into one executable those names would collide, so
++# compile each table under a module specific name. wasm/static_modules_*.c
++# refers to these names.
++sys_table.o:    CPPFLAGS += -Dvlog_startup_routines=vlog_startup_routines_system
++vhdl_table.o:   CPPFLAGS += -Dvlog_startup_routines=vlog_startup_routines_vhdl_sys
++vhdl_textio.o:  CPPFLAGS += -Dvlog_startup_routines=vlog_startup_routines_vhdl_textio
++v2005_math.o:   CPPFLAGS += -Dvlog_startup_routines=vlog_startup_routines_v2005_math
++va_math.o:      CPPFLAGS += -Dvlog_startup_routines=vlog_startup_routines_va_math
++v2009_table.o:  CPPFLAGS += -Dvlog_startup_routines=vlog_startup_routines_v2009
++vpi_debug.o:    CPPFLAGS += -Dvlog_startup_routines=vlog_startup_routines_vpi_debug
++
++# Print a make variable, e.g. "make print-O"
++print-%:
++	@echo $($*)

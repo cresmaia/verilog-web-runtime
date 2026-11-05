@@ -1,0 +1,64 @@
+# yosys.core.wasm の関数名(name セクション) 27834 個。名前の全文(切らない。c++filt を通さない)の最上位の名前空間ごとの数
+  11379 -no-namespace-
+   4943 slang
+   4635 std
+   4601 Yosys
+    615 boost
+    384 toml
+    299 slang_frontend
+    202 frontend_verilog_yy
+    145 cxxopts
+    138 fmt
+     94 Minisat
+     88 SubCircuit
+     72 json11
+     66 ezSAT
+     51 symfpu
+     34 __cxxabiv1
+     25 BS
+     18 frontend_verilog_yyFlexLexer
+     13 BigUnsigned
+     10 BigInteger
+      7 ezMiniSAT
+      6 SHA1
+      5 Location
+      2 Position
+      1 specify_triple
+      1 specify_rise_fall
+
+# 部品ごとの名前の数(正規表現。数えた行は名前の全文)
+4601	Yosys	^Yosys::
+0	ABC	^abc::
+0	ABC kissat	^abc::kissat_
+0	ABC cadical	cadical_
+0	ABC glucose	Gluco
+0	ABC satoko	satoko
+0	ABC xSAT	xSAT
+0	ABC bsat2	Sat_Solver2
+0	ABC cudd	^abc::(Cudd|cudd)
+0	ABC bzip2	BZ2_
+0	ABC zlib	^abc::(inflate|deflate|crc32|adler32)
+0	ABC btor2	btor2parser
+4943	slang	^slang::
+299	sv-elab	^slang_frontend::
+138	fmt	^fmt::
+384	toml++	^toml::
+145	cxxopts	^cxxopts::
+68	symfpu	symfpu::
+627	boost unordered	boost::unordered
+175	boost regex	boost::(re_detail_600|basic_regex|match_results|regex_error|cpp_regex_traits|object_cache)
+25	BS thread pool	^BS::
+94	Minisat (Yosys libs)	^Minisat::
+73	ezSAT	^(ezSAT|ezMiniSAT)::
+88	SubCircuit	^SubCircuit::
+72	json11	^json11::
+23	BigInteger/BigUnsigned	^Big(Integer|Unsigned)
+6	SHA1	^SHA1::
+18	flex lexer	FlexLexer
+0	fst writer	fstWriter|fstapi
+0	lz4	LZ4_
+4588	libc++ std::__2	^std::__2::
+48	libc++abi __cxa	^__cxa_|__cxxabiv1
+12	libunwind _Unwind	_Unwind_
+7	compiler-rt builtins	^(__multi3|__udivti3|__lshrti3|__ashlti3|__divti3|__udivmodti4|__trunctfsf2|__letf2|__getf2)$
+2	dlmalloc	^(dlmalloc|dlfree|dlrealloc|dlcalloc)$

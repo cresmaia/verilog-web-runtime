@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MIT. Copyright (c) 2026 Cresmaia Inc. See LICENSES/MIT-cresmaia-glue.txt. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verilog runtime demo</title>
+<style>
+  :root { --bg: #fff; --fg: #1a1a1a; --muted: #555; --line: #ccc; --code: #f5f5f5; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #151515; --fg: #eee; --muted: #aaa; --line: #444; --code: #222; } }
+  body { background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; margin: 0 auto; padding: 16px; max-width: 52rem; }
+  textarea, pre { width: 100%; box-sizing: border-box; background: var(--code); color: var(--fg); border: 1px solid var(--line); font: 14px/1.4 ui-monospace, monospace; padding: 8px; }
+  textarea { height: 14rem; }
+  pre { min-height: 5rem; white-space: pre-wrap; }
+  button { font: inherit; padding: 4px 12px; }
+  .runtime-notice { border: 1px solid var(--line); padding: 8px 12px; color: var(--muted); font-size: 14px; margin: 16px 0; }
+  .runtime-notice p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<h1>Verilog runtime demo</h1>
+<p>Compiles and runs a Verilog testbench with Icarus Verilog (WebAssembly) in a Web Worker. Only the runtime of this release is used.
+  The message format is in <code>docs/protocol.md</code>.</p>
+<div id="notice"></div>
+<label for="src">Verilog source (file name: tb.v)</label>
+<textarea id="src" spellcheck="false"></textarea>
+<p><button id="run" type="button">Run</button> <button id="stop" type="button">Stop</button></p>
+<pre id="out" aria-live="polite"></pre>
+<script type="module" src="demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+--- /workspace/YoWASP/yosys/build.sh	2026-10-24 23:32:08.019912474 +0000
++++ /workspace/build-run.sh	2026-10-24 23:32:14.429971596 +0000
+@@ -19,6 +19,7 @@
+   -DYOSYS_WITHOUT_LIBFFI=ON \
+   -DYOSYS_WITHOUT_READLINE=ON \
+   -DYOSYS_WITHOUT_EDITLINE=ON \
+-  -DYOSYS_WITHOUT_TCL=ON
++  -DYOSYS_WITHOUT_TCL=ON \
++  -DYOSYS_WITHOUT_ABC=ON
+ 
+ cmake --build yosys-build --parallel $(nproc)

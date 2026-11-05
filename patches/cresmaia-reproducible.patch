@@ -1,0 +1,39 @@
+--- a/wasm/build.sh
++++ b/wasm/build.sh
+@@ -1,5 +1,10 @@
+ #!/usr/bin/env bash
+ #
++# Modified by Cresmaia Inc. (株式会社クレスマイア) on 2026-10-18, as required by GPLv2 section 2(a):
++#   added -ffile-prefix-map to EMCC_CFLAGS (see the "Cresmaia" block below) so that the .wasm output
++#   does not depend on the paths of the source tree and the build directory.
++#   The change is also recorded in cresmaia-reproducible.patch.
++#
+ # Build Icarus Verilog's three programs (ivlpp, ivl, vvp) to WebAssembly.
+ #
+ #   source /path/to/emsdk/emsdk_env.sh      # or any emcc on PATH
+@@ -33,6 +38,14 @@
+ EMVER=$(emcc -dumpversion)
+ echo "== emcc $EMVER, source $SRC, build $BUILD"
+ 
++# --- Cresmaia Inc. (株式会社クレスマイア), 2026-10-18: reproducible paths (GPLv2 section 2(a): changed file) ---
++# Replace the path of the source tree (and of the build directory, when it is outside the source tree) with
++# fixed short paths in everything the compiler embeds (__FILE__ and debug info). Emscripten's emcc.py appends
++# EMCC_CFLAGS to the arguments of every emcc/em++ call (zlib, bzip2, configure, make, static module tables, link).
++export EMCC_CFLAGS="${EMCC_CFLAGS:+$EMCC_CFLAGS }-ffile-prefix-map=$SRC=/src/iverilog"
++case "$BUILD/" in "$SRC"/*) ;; *) export EMCC_CFLAGS="$EMCC_CFLAGS -ffile-prefix-map=$BUILD=/build/iverilog" ;; esac
++# --- end of Cresmaia change ---
++
+ # Emscripten renamed TOTAL_STACK to STACK_SIZE in 3.1.25.
+ ver_ge() { [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]; }
+ if ver_ge "$EMVER" 3.1.25; then STACK=STACK_SIZE; else STACK=TOTAL_STACK; fi
+--- /dev/null
++++ b/release_tag.h
+@@ -0,0 +1,8 @@
++/*
++ * Added by Cresmaia Inc. (株式会社クレスマイア) on 2026-10-18, as required by GPLv2 section 2(a).
++ * This file is new (it is not part of upstream Icarus Verilog commit 1a23d1ffd). Makefile.in uses it for VERSION_TAG
++ * when the source tree has no .git directory, in place of git-describe. It fixes the version string of the
++ * WebAssembly build, so that the output does not depend on whether a git history was present at build time.
++ * The change is recorded in cresmaia-reproducible.patch.
++ */
++#define VERSION_TAG "s20260301-476-g1a23d1ffd-wasm1"

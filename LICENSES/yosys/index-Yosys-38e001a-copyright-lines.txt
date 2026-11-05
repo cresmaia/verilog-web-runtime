@@ -1,0 +1,95 @@
+# Yosys 38e001a: kernel passes frontends backends techlibs libs の C++/Python/ソースにある著作権の行
+# 機械で作った索引である(上流の文ではない)。各ファイルの先頭80行から「Copyright」「(C) 年」を含む行を集め、行ごとに、その行を持つファイルの数を数えた。
+375	copyright notice and this permission notice appear in all copies.
+246	Copyright (C) 2012  Claire Xenia Wolf <claire@yosyshq.com>
+22	NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+22	The above copyright notice and this permission notice shall be included in all copies or
+14	Copyright (c) 2007-2010, Niklas Sorensson
+12	Copyright (C) 2013  Claire Xenia Wolf <claire@yosyshq.com>
+11	Copyright (C) 2021  Marcelina Kościelnicka <mwk@0x04.net>
+10	Copyright (C) 2022  Jannis Harder <jix@yosyshq.com> <me@jix.one>
+10	Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+9	Copyright (C) 2020  Marcelina Kościelnicka <mwk@0x04.net>
+9	Copyright (C) 2024  Emily Schmidt <emily@yosyshq.com>
+9	The above copyright notice and this permission notice shall be included in
+7	Copyright (C) 2014  Claire Xenia Wolf <claire@yosyshq.com>
+7	Copyright (C) 2014  Johann Glaser <Johann.Glaser@gmx.at>
+7	Copyright (C) 2020  whitequark <whitequark@whitequark.org>
+7	Copyright (C) 2024 National Technology and Engineering Solutions of Sandia, LLC
+6	Copyright (C) 2024  Jannis Harder <jix@yosyshq.com> <me@jix.one>
+6	Copyright (C) 2024 Microchip Technology Inc. and its subsidiaries
+5	Copyright (C) 2022  Marcelina Kościelnicka <mwk@0x04.net>
+5	Copyright (C) 2024  Martin Povišer <povik@cutebit.org>
+5	THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+4	(C) 2019  Eddie Hung    <eddie@fpgeh.com>
+4	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+4	Copyright (C) 2020  Alberto Gonzalez <boqwxp@airmail.cc>
+4	Copyright 2020-2022 F4PGA Authors
+3	Copyright (C)  Martin Povišer <povik@cutebit.org>
+3	Copyright (C) 2017 Robert Ou <rqou@robertou.com>
+3	Copyright (C) 2018  whitequark <whitequark@whitequark.org>
+3	Copyright (C) 2019  Miodrag Milanovic <micko@yosyshq.com>
+3	Copyright (c) 2008-2010, Niklas Sorensson
+2	A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+2	Copyright (C) 2005 Ariya Hidayat (ariya@kde.org)
+2	Copyright (C) 2006 Ariya Hidayat (ariya@kde.org)
+2	Copyright (C) 2007 Ariya Hidayat (ariya@kde.org)
+2	Copyright (C) 2017  Claire Xenia Wolf <claire@yosyshq.com>
+2	Copyright (C) 2018  Miodrag Milanovic <micko@yosyshq.com>
+2	Copyright (C) 2018  Ruben Undheim <ruben.undheim@gmail.com>
+2	Copyright (C) 2019  Marcelina Kościelnicka <mwk@0x04.net>
+2	Copyright (C) 2019  whitequark <whitequark@whitequark.org>
+2	Copyright (C) 2019-2020  whitequark <whitequark@whitequark.org>
+2	Copyright (C) 2021  Cologne Chip AG <support@colognechip.com>
+2	Copyright (C) 2022  Miodrag Milanovic <micko@yosyshq.com>
+2	Copyright (C) 2023  Catherine <whitequark@whitequark.org>
+2	Copyright (C) 2023  N. Engelhardt <nak@yosyshq.com>
+2	Copyright (C) 2025  Jannis Harder <jix@yosyshq.com> <me@jix.one>
+2	Copyright (C) 2025  Krystine Dawn <krystinedawn@yosyshq.com>
+2	Copyright (c) 2003-2007, Niklas Een, Niklas Sorensson
+2	Copyright (c) 2006,      Niklas Een, Niklas Sorensson
+2	Copyright (c) 2007 Ramiro Polla
+2	Copyright (c) 2009-2010, Niklas Sorensson
+2	Copyright (c) 2009-2018 Tony Bybell.
+2	Copyright (c) 2013 Dropbox, Inc.
+2	Copyright (c) Yann Collet. All rights reserved.
+2	Redistributions of source code must retain the above copyright
+2	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+2	copyright notice, this list of conditions and the following disclaimer
+1	(C) 2019  Eddie Hung <eddie@fpgeh.com>
+1	(C) 2020  Eddie Hung    <eddie@fpgeh.com>
+1	1. Redistributions of source code must retain the above copyright
+1	2. Redistributions in binary form must reproduce the above copyright
+1	Copyright (C) 2012  Aki "lethalbit" Van Ness <aki@yosyshq.com> <aki@lethalbit.net>
+1	Copyright (C) 2012  Clifford Wolf <clifford@clifford.at>
+1	Copyright (C) 2012  Martin Schmölzer <martin@schmoelzer.at>
+1	Copyright (C) 2012 - 2020  Claire Xenia Wolf <claire@yosyshq.com>
+1	Copyright (C) 2012 Claire Xenia Wolf <claire@yosyshq.com>
+1	Copyright (C) 2018  Claire Xenia Wolf <claire@yosyshq.com>
+1	Copyright (C) 2018 gatecat <gatecat@ds0.me>
+1	Copyright (C) 2019  Claire Xenia Wolf <claire@yosyshq.com>
+1	Copyright (C) 2019  Hannah Ravensloft <dan.ravensloft@gmail.com>
+1	Copyright (C) 2019  gatecat <gatecat@ds0.me>
+1	Copyright (C) 2020  Miodrag Milanovic <micko@yosyshq.com>
+1	Copyright (C) 2020 R. Ou <rqou@robertou.com>
+1	Copyright (C) 2021  gatecat <gatecat@ds0.me>
+1	Copyright (C) 2021 QuickLogic Corp.
+1	Copyright (C) 2021 gatecat <gatecat@ds0.me>
+1	Copyright (C) 2023
+1	Copyright (C) 2023  Andy Fox <andy@rushc.com> https://www.linkedin.com/in/awfox/
+1	Copyright (C) 2023  Jannis Harder <jix@yosyshq.com> <me@jix.one>
+1	Copyright (C) 2023  Miodrag Milanovic <micko@yosyshq.com>
+1	Copyright (C) 2024  Miodrag Milanovic <micko@yosyshq.com>
+1	Copyright (C) 2024  Richard Herveille <richard.herveille@roalogic.com>
+1	Copyright (C) 2024 Hannah Ravensloft <lofty@yosyshq.com>
+1	Copyright (C) 2024 Miodrag Milanovic <micko@yosyshq.com>
+1	Copyright (C) 2024 N. Engelhardt <nak@yosyshq.com>
+1	Copyright (C) 2025  King Lok Chung <king.chung@manchester.ac.uk>
+1	Copyright (c) 1993 The Regents of the University of California.
+1	Copyright (c) 2006-2010, Niklas Sorensson
+1	Copyright (c) 2009-2023 Tony Bybell.
+1	Copyright (c) 2011, Niklas Sorensson
+1	Copyright (c) 2012, Niklas Sorensson
+1	Copyright (c) 2015 Tiancheng "Timothy" Gu
+1	Copyright (c) 2019 Pali Rohár <pali.rohar@gmail.com>
+1	Copyright (c) 2020 Ralf Habacker <ralf.habacker@freenet.de>

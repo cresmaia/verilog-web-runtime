@@ -1,0 +1,4 @@
+# The output of tools/build-site.mjs (not committed; it is rebuilt from the repository)
+/site-out/
+node_modules/
+/work/

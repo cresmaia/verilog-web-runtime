@@ -1,0 +1,341 @@
+=== module 1  package netlistsvg  16707 bytes
+nearest file (line similarity 0.9601): netlistsvg@1.0.2 built/Cell.js
+diff: 5 hunks, +30 lines (file only) / -2 lines (bundle only)
+--- bundle
++++ netlistsvg@1.0.2/built/Cell.js
+@@ -168,0 +169,16 @@
++        var layoutAttrs = { 'org.eclipse.elk.portConstraints': 'FIXED_POS' };
++        var fixedPosX = null;
++        var fixedPosY = null;
++        for (var attr in this.attributes) {
++            if (attr.startsWith('org.eclipse.elk')) {
++                if (attr === 'org.eclipse.elk.x') {
++                    fixedPosX = this.attributes[attr];
++                    continue;
++                }
++                if (attr === 'org.eclipse.elk.y') {
++                    fixedPosY = this.attributes[attr];
++                    continue;
++                }
++                layoutAttrs[attr] = this.attributes[attr];
++            }
++        }
+@@ -185 +201 @@
+-                layoutOptions: { 'de.cau.cs.kieler.portConstraints': 'FIXED_POS' },
++                layoutOptions: layoutAttrs,
+@@ -187,0 +204,6 @@
++            if (fixedPosX) {
++                cell.x = fixedPosX;
++            }
++            if (fixedPosY) {
++                cell.y = fixedPosY;
++            }
+@@ -206 +228 @@
+-            layoutOptions: { 'de.cau.cs.kieler.portConstraints': 'FIXED_POS' },
++            layoutOptions: layoutAttrs,
+@@ -208,0 +231,6 @@
++        if (fixedPosX) {
++            ret.x = fixedPosX;
++        }
++        if (fixedPosY) {
++            ret.y = fixedPosY;
++        }
+reference (not counted): no identical file in any published netlistsvg version
+
+=== module 2  package netlistsvg  7438 bytes
+nearest file (line similarity 0.9714): netlistsvg@1.0.2 built/FlatModule.js
+diff: 2 hunks, +1 lines (file only) / -10 lines (bundle only)
+--- bundle
++++ netlistsvg@1.0.2/built/FlatModule.js
+@@ -11 +11 @@
+-            if (mod.attributes && mod.attributes.top === 1) {
++            if (mod.attributes && Number(mod.attributes.top) === 1) {
+@@ -26,9 +25,0 @@
+-    FlatModule.prototype.getNodes = function () {
+-        return this.nodes;
+-    };
+-    FlatModule.prototype.getWires = function () {
+-        return this.wires;
+-    };
+-    FlatModule.prototype.getName = function () {
+-        return this.moduleName;
+-    };
+reference (not counted): identical to built/FlatModule.js in netlistsvg 1.0.0, 1.0.1
+
+=== module 4  package netlistsvg  3396 bytes
+nearest file (line similarity 0.7652): netlistsvg@1.0.2 built/Skin.js
+diff: 3 hunks, +36 lines (file only) / -18 lines (bundle only)
+--- bundle
++++ netlistsvg@1.0.2/built/Skin.js
+@@ -81,0 +82,12 @@
++    function getLowPriorityAliases() {
++        var ret = [];
++        onml.t(Skin.skin, {
++            enter: function (node) {
++                if (node.name === 's:low_priority_alias') {
++                    ret.push(node.attr.value);
++                }
++            },
++        });
++        return ret;
++    }
++    Skin.getLowPriorityAliases = getLowPriorityAliases;
+@@ -83,2 +95,21 @@
+-        var properties = _.find(Skin.skin, function (el) {
+-            return el[0] === 's:properties';
++        var vals;
++        onml.t(Skin.skin, {
++            enter: function (node) {
++                if (node.name === 's:properties') {
++                    vals = _.mapValues(node.attr, function (val) {
++                        if (!isNaN(Number(val))) {
++                            return Number(val);
++                        }
++                        if (val === 'true') {
++                            return true;
++                        }
++                        if (val === 'false') {
++                            return false;
++                        }
++                        return val;
++                    });
++                }
++                else if (node.name === 's:layoutEngine') {
++                    vals.layoutEngine = node.attr;
++                }
++            },
+@@ -86,16 +117,3 @@
+-        var vals = _.mapValues(properties[1], function (val) {
+-            if (!isNaN(val)) {
+-                return Number(val);
+-            }
+-            if (val === 'true') {
+-                return true;
+-            }
+-            if (val === 'false') {
+-                return false;
+-            }
+-            return val;
+-        });
+-        var layoutEngine = _.find(properties, function (el) {
+-            return el[0] === 's:layoutEngine';
+-        }) || {};
+-        vals.layoutEngine = layoutEngine[1];
++        if (!vals.layoutEngine) {
++            vals.layoutEngine = {};
++        }
+reference (not counted): identical to built/Skin.js in netlistsvg 1.0.0, 1.0.1
+
+=== module 6  package netlistsvg  6615 bytes
+nearest file (line similarity 0.8962): netlistsvg@1.0.2 built/drawModule.js
+diff: 9 hunks, +29 lines (file only) / -14 lines (bundle only)
+--- bundle
++++ netlistsvg@1.0.2/built/drawModule.js
+@@ -1,0 +2,7 @@
++var __spreadArrays = (this && this.__spreadArrays) || function () {
++    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
++    for (var r = Array(s), k = 0, i = 0; i < il; i++)
++        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
++            r[k] = a[j];
++    return r;
++};
+@@ -15 +22 @@
+-    var nodes = module.getNodes().map(function (n) {
++    var nodes = module.nodes.map(function (n) {
+@@ -59,7 +66,13 @@
+-    var svg = Skin_1.default.skin.slice(0, 2);
+-    svg[1].width = g.width;
+-    svg[1].height = g.height;
+-    var styles = _.filter(Skin_1.default.skin, function (el) {
+-        return el[0] === 'style';
+-    });
+-    var ret = svg.concat(styles).concat(nodes).concat(lines);
++    var svgAttrs = Skin_1.default.skin[1];
++    svgAttrs.width = g.width.toString();
++    svgAttrs.height = g.height.toString();
++    var styles = ['style', {}, ''];
++    onml.t(Skin_1.default.skin, {
++        enter: function (node) {
++            if (node.name === 'style') {
++                styles[2] += node.full[2];
++            }
++        },
++    });
++    var elements = __spreadArrays([styles], nodes, lines);
++    var ret = __spreadArrays(['svg', svgAttrs], elements);
+@@ -118 +131,2 @@
+-        if (edgeGroup[0].source === dummyId) {
++        var firstEdge = edgeGroup[0];
++        if (firstEdge.source === dummyId) {
+@@ -120 +134 @@
+-            dummyLoc = edgeGroup[0].sections[0].startPoint;
++            dummyLoc = firstEdge.sections[0].startPoint;
+@@ -124 +138 @@
+-            dummyLoc = edgeGroup[0].sections[0].endPoint;
++            dummyLoc = firstEdge.sections[0].endPoint;
+@@ -129 +143,2 @@
+-            var section = edge.sections[0];
++            var e = edge;
++            var section = e.sections[0];
+@@ -148 +163 @@
+-                if (section.bendPoints) {
++                if (section.bendPoints && section.bendPoints.length > 0) {
+@@ -154 +169 @@
+-                if (section.bendPoints) {
++                if (section.bendPoints && section.bendPoints.length > 0) {
+reference (not counted): identical to built/drawModule.js in netlistsvg 1.0.0, 1.0.1
+
+=== module 7  package netlistsvg  5326 bytes
+nearest file (line similarity 0.8029): netlistsvg@1.0.2 built/elkGraph.js
+diff: 17 hunks, +27 lines (file only) / -28 lines (bundle only)
+--- bundle
++++ netlistsvg@1.0.2/built/elkGraph.js
+@@ -6,0 +7,2 @@
++    ElkModel.dummyNum = 0;
++    ElkModel.edgeIndex = 0;
+@@ -9 +11 @@
+-    var children = module.getNodes().map(function (n) {
++    var children = module.nodes.map(function (n) {
+@@ -12,3 +14,3 @@
+-    var i = 0;
+-    var dummies = 0;
+-    var edges = _.flatMap(module.getWires(), function (w) {
++    ElkModel.edgeIndex = 0;
++    ElkModel.dummyNum = 0;
++    var edges = _.flatMap(module.wires, function (w) {
+@@ -18 +20 @@
+-            i = route(w.drivers, w.riders, i, ret);
++            route(w.drivers, w.riders, ret);
+@@ -24,2 +26,2 @@
+-            i = route(w.drivers, w.laterals, i, ret);
+-            i = route(w.laterals, w.riders, i, ret);
++            route(w.drivers, w.laterals, ret);
++            route(w.laterals, w.riders, ret);
+@@ -31,2 +33,2 @@
+-            var dummyId_1 = addDummy(children, dummies);
+-            dummies += 1;
++            var dummyId_1 = addDummy(children);
++            ElkModel.dummyNum += 1;
+@@ -35,2 +37,2 @@
+-                var id = 'e' + String(i);
+-                i += 1;
++                var id = 'e' + String(ElkModel.edgeIndex);
++                ElkModel.edgeIndex += 1;
+@@ -52,2 +54,2 @@
+-            var dummyId_2 = addDummy(children, dummies);
+-            dummies += 1;
++            var dummyId_2 = addDummy(children);
++            ElkModel.dummyNum += 1;
+@@ -56,2 +58,2 @@
+-                var id = 'e' + String(i);
+-                i += 1;
++                var id = 'e' + String(ElkModel.edgeIndex);
++                ElkModel.edgeIndex += 1;
+@@ -75,2 +77,2 @@
+-                var id = 'e' + String(i);
+-                i += 1;
++                var id = 'e' + String(ElkModel.edgeIndex);
++                ElkModel.edgeIndex += 1;
+@@ -93 +95 @@
+-        id: module.getName(),
++        id: module.moduleName,
+@@ -99,2 +101,2 @@
+-function addDummy(children, dummyNum) {
+-    var dummyId = '$d_' + String(dummyNum);
++function addDummy(children) {
++    var dummyId = '$d_' + String(ElkModel.dummyNum);
+@@ -115 +117 @@
+-function route(sourcePorts, targetPorts, edgeIndex, edges) {
++function route(sourcePorts, targetPorts, edges) {
+@@ -122 +124 @@
+-            var id = 'e' + edgeIndex;
++            var id = 'e' + ElkModel.edgeIndex;
+@@ -125,4 +127,2 @@
+-                source: sourceParentKey,
+-                sourcePort: sourceKey,
+-                target: targetParentKey,
+-                targetPort: targetKey,
++                sources: [sourceKey],
++                targets: [targetKey],
+@@ -134 +134 @@
+-            edgeIndex += 1;
++            ElkModel.edgeIndex += 1;
+@@ -139 +138,0 @@
+-    return edgeIndex;
+reference (not counted): identical to built/elkGraph.js in netlistsvg 1.0.0, 1.0.1
+
+=== module 8  package netlistsvg  1706 bytes
+nearest file (line similarity 0.6000): netlistsvg@1.0.2 built/index.js
+diff: 4 hunks, +38 lines (file only) / -6 lines (bundle only)
+--- bundle
++++ netlistsvg@1.0.2/built/index.js
+@@ -3 +3 @@
+-var ELK = (typeof window !== "undefined" ? window['ELK'] : typeof global !== "undefined" ? global['ELK'] : null);
++var ELK = require("elkjs");
+@@ -10 +10 @@
+-function render(skinData, yosysNetlist, done) {
++function createFlatModule(skinData, yosysNetlist) {
+@@ -22,0 +23,4 @@
++    return flatModule;
++}
++function dumpLayout(skinData, yosysNetlist, prelayout, done) {
++    var flatModule = createFlatModule(skinData, yosysNetlist);
+@@ -24,4 +28,32 @@
+-    var promise = elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine })
+-        .then(function (g) { return drawModule_1.default(g, flatModule); })
+-        // tslint:disable-next-line:no-console
+-        .catch(function (e) { console.error(e); });
++    if (prelayout) {
++        done(null, JSON.stringify(kgraph, null, 2));
++        return;
++    }
++    var layoutProps = Skin_1.default.getProperties();
++    var promise = elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
++    promise.then(function (graph) {
++        done(null, JSON.stringify(graph, null, 2));
++    }).catch(function (reason) {
++        throw Error(reason);
++    });
++}
++exports.dumpLayout = dumpLayout;
++function render(skinData, yosysNetlist, done, elkData) {
++    var flatModule = createFlatModule(skinData, yosysNetlist);
++    var kgraph = elkGraph_1.buildElkGraph(flatModule);
++    var layoutProps = Skin_1.default.getProperties();
++    var promise;
++    // if we already have a layout then use it
++    if (elkData) {
++        promise = new Promise(function (resolve) {
++            drawModule_1.default(elkData, flatModule);
++            resolve();
++        });
++    }
++    else {
++        // otherwise use ELK to generate the layout
++        promise = elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine })
++            .then(function (g) { return drawModule_1.default(g, flatModule); })
++            // tslint:disable-next-line:no-console
++            .catch(function (e) { console.error(e); });
++    }
+reference (not counted): identical to built/index.js in netlistsvg 1.0.0, 1.0.1
+
+=== module 9  package netlistsvg  48693 bytes
+nearest file (line similarity 0.8000): netlistsvg@1.0.2 jsmodule/index.js
+diff: 2 hunks, +6 lines (file only) / -6 lines (bundle only)
+--- bundle
++++ netlistsvg@1.0.2/jsmodule/index.js
+@@ -2 +2 @@
+-
++const fs = require('fs');
+@@ -8,5 +8,5 @@
+-const digital = "<svg  xmlns=\"http://www.w3.org/2000/svg\"\n  xmlns:xlink=\"http://www.w3.org/1999/xlink\"\n  xmlns:s=\"https://github.com/nturley/netlistsvg\">\n  <s:properties>\n    <s:layoutEngine\n      org.eclipse.elk.layered.spacing
+-const analog = "<svg xmlns=\"http://www.w3.org/2000/svg\"\n     xmlns:xlink=\"http://www.w3.org/1999/xlink\"\n     xmlns:s=\"https://github.com/nturley/netlistsvg\">\n  <s:properties\n    constants=\"false\"\n    splitsAndJoins=\"false\"\n
+-const exampleDigital = Buffer("ewogICJjcmVhdG9yIjogIllvc3lzIDAuNSsyMjAgKGdpdCBzaGExIDk0ZmJhZmYsIGVtY2MgIC1PcykiLAogICJtb2R1bGVzIjogewogICAgInVwM2Rvd241IjogewogICAgICAicG9ydHMiOiB7CiAgICAgICAgImNsb2NrIjogewogICAgICAgICAgImRpcmVjdGlvbiI6ICJp
+-const exampleAnalog = Buffer("ewogICJtb2R1bGVzIjogewogICAgInJlc2lzdG9yX2RpdmlkZXIiOiB7CiAgICAgICJwb3J0cyI6IHsKICAgICAgICAiQSI6IHsKICAgICAgICAgICJkaXJlY3Rpb24iOiAiaW5wdXQiLAogICAgICAgICAgImJpdHMiOiBbMl0KICAgICAgICB9LAogICAgICAgICJCIjogewogI
+-const schema = Buffer("ewogICJkZXNjcmlwdGlvbiI6ICJKU09OIFNjaGVtYSBZb3N5cyBuZXRsaXN0cyBKU09OIGZvcm1hdCIsCiAgInR5cGUiOiAib2JqZWN0IiwKICAvLyBhbiBlbXB0eSBvYmplY3QgaXMgaW52YWxpZAogICJyZXF1aXJlZCI6IFsibW9kdWxlcyJdLAogICJlcnJvck1lc3NhZ2UiOiB7CiAg
++const digital = fs.readFileSync(__dirname + '/../lib/default.svg', 'utf8');
++const analog = fs.readFileSync(__dirname + '/../lib/analog.svg', 'utf8');
++const exampleDigital = fs.readFileSync(__dirname + '/../test/digital/up3down5.json');
++const exampleAnalog = fs.readFileSync(__dirname + '/../test/analog/and.json');
++const schema = fs.readFileSync(__dirname + '/../lib/yosys.schema.json5');
+reference (not counted): identical to jsmodule/index.js in netlistsvg 1.0.0

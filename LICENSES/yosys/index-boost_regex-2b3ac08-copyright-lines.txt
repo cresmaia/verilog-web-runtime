@@ -1,0 +1,16 @@
+# boost_regex 2b3ac08 include/: 著作権の行
+# 機械で作った索引である(上流の文ではない)。各ファイルの先頭80行から「Copyright」「(C) 年」を含む行を集め、行ごとに、その行を持つファイルの数を数えた。
+23	Copyright (c) 1998-2002
+11	Copyright (c) 2004
+6	Copyright (c) 2002
+6	Copyright (c) 2003
+2	Copyright (c) 1998-2009
+2	Copyright (c) 2020
+2	Copyright 2011 Garmin Ltd. or its subsidiaries
+1	Copyright (c) 1998-2000
+1	Copyright (c) 1998-2004 John Maddock
+1	Copyright (c) 1998-2005
+1	Copyright (c) 1998-2009 John Maddock
+1	Copyright (c) 2003-2005
+1	Copyright (c) 2004 John Maddock
+1	Copyright 2008 Eric Niebler.

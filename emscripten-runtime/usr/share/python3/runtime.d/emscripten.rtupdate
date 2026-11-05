@@ -1,0 +1,7 @@
+#! /bin/sh
+set -e
+
+if [ "$1" = rtupdate ]; then
+	py3clean -p emscripten /usr/share/emscripten
+	py3compile -p emscripten  /usr/share/emscripten
+fi

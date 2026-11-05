@@ -1,0 +1,36 @@
+$ gpg --verify org.eclipse.xtend.lib-2.36.0-sources.jar.asc org.eclipse.xtend.lib-2.36.0-sources.jar
+[GNUPG:] NEWSIG
+gpg: Signature made Sun Aug 25 16:17:09 2024 JST
+gpg:                using RSA key FAF0C43FF23519B701C237A01C82B802D1AE0CFD
+[GNUPG:] KEY_CONSIDERED A5E7AF585AD0184292C79EFCDA31DD9C084853F7 0
+[GNUPG:] SIG_ID 0bDNE8Qn7oEpTIY2Ezx5ZZHScj0 2024-08-25 1724570229
+[GNUPG:] GOODSIG 1C82B802D1AE0CFD Eclipse Xtext Project <xtext-dev@eclipse.org>
+gpg: Good signature from "Eclipse Xtext Project <xtext-dev@eclipse.org>" [unknown]
+[GNUPG:] VALIDSIG FAF0C43FF23519B701C237A01C82B802D1AE0CFD 2024-08-25 1724570229 0 4 0 1 10 00 A5E7AF585AD0184292C79EFCDA31DD9C084853F7
+[GNUPG:] KEY_CONSIDERED A5E7AF585AD0184292C79EFCDA31DD9C084853F7 0
+[GNUPG:] KEY_CONSIDERED A5E7AF585AD0184292C79EFCDA31DD9C084853F7 0
+[GNUPG:] TRUST_UNDEFINED 0 pgp
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: A5E7 AF58 5AD0 1842 92C7  9EFC DA31 DD9C 0848 53F7
+     Subkey fingerprint: FAF0 C43F F235 19B7 01C2  37A0 1C82 B802 D1AE 0CFD
+[GNUPG:] VERIFICATION_COMPLIANCE_MODE 23
+exit 0
+$ gpg --verify org.eclipse.xtext.xbase.lib-2.36.0-sources.jar.asc org.eclipse.xtext.xbase.lib-2.36.0-sources.jar
+[GNUPG:] NEWSIG
+gpg: Signature made Sun Aug 25 16:16:12 2024 JST
+gpg:                using RSA key FAF0C43FF23519B701C237A01C82B802D1AE0CFD
+[GNUPG:] KEY_CONSIDERED A5E7AF585AD0184292C79EFCDA31DD9C084853F7 0
+[GNUPG:] SIG_ID dsq4cRm5p+lr1ouITW6+9el9AjE 2024-08-25 1724570172
+[GNUPG:] GOODSIG 1C82B802D1AE0CFD Eclipse Xtext Project <xtext-dev@eclipse.org>
+gpg: Good signature from "Eclipse Xtext Project <xtext-dev@eclipse.org>" [unknown]
+[GNUPG:] VALIDSIG FAF0C43FF23519B701C237A01C82B802D1AE0CFD 2024-08-25 1724570172 0 4 0 1 10 00 A5E7AF585AD0184292C79EFCDA31DD9C084853F7
+[GNUPG:] KEY_CONSIDERED A5E7AF585AD0184292C79EFCDA31DD9C084853F7 0
+[GNUPG:] KEY_CONSIDERED A5E7AF585AD0184292C79EFCDA31DD9C084853F7 0
+[GNUPG:] TRUST_UNDEFINED 0 pgp
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: A5E7 AF58 5AD0 1842 92C7  9EFC DA31 DD9C 0848 53F7
+     Subkey fingerprint: FAF0 C43F F235 19B7 01C2  37A0 1C82 B802 D1AE 0CFD
+[GNUPG:] VERIFICATION_COMPLIANCE_MODE 23
+exit 0

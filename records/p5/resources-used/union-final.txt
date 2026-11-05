@@ -1,0 +1,3 @@
+share/simcells.v
+share/simlib.v
+share/techmap.v

@@ -1,0 +1,171 @@
+NOTICE of the Yosys bundle (yosys-wasm/)
+=========================================
+
+This is the notice of the Yosys bundle built by Cresmaia Inc. on 2026-10-25 (JST) without ABC (package version 0.68.1207-cresmaia.noabc.1).
+
+Cresmaia Inc. (R8b, P5). This file is placed at yosys-wasm/NOTICE of a release that was built with `tools/build-site.mjs --with-yosys`.
+The license texts it names are in yosys-wasm/LICENSES/ (the same directory has MANIFEST.tsv, which says from which upstream file and commit each text
+was copied, byte for byte, or which lines of a file were copied). It is NOT part of the NOTICE of the Icarus Verilog files of the release; that NOTICE
+does not cover the files below.
+
+Every entry is a reading of the files named; it is not a legal opinion. Section 5 lists what was not checked. The records named below are in the source of the release
+(runtime-source-<version>.tar.gz); the other records of the build and of the checks are not in it.
+
+1. What the bundle contains
+---------------------------
+The files were built by Cresmaia Inc. from the sources of Yosys 0.68 (YosysHQ/yosys 38e001a, with the submodules named in section 4), by the build procedure of
+YoWASP (https://codeberg.org/YoWASP/yosys, commit 89b0bc1: build.sh and package-npmjs.sh), with ABC NOT compiled in (cmake option YOSYS_WITHOUT_ABC=ON).
+The package version is 0.68.1207-cresmaia.noabc.1 (prepare.py of YoWASP gave 0.68.1207; it was changed after that). The only change to build.sh is the cmake option above (records/p5/noabc/build/b1/build.sh.diff). Other differences are of place and tools: the build ran in a Docker container in /workspace/YoWASP/yosys, with the tools of Ubuntu 24.04 (cmake 3.28.3, GNU Make 4.3, flex 2.6.4, bison 3.8.2, ccache 4.9.1 with an empty cache, Python 3.12.3, git 2.43.0) and Node.js v22.23.3 with npm 10.9.9; the resource tar is cut down (section 1).
+ABC (UC Berkeley) and its parts (saucy, the SAT solvers, CUDD, bzip2, zlib, Btor2Tools, kitty, ACD, eSLIM) are NOT in these files: no name of them is in
+yosys.core.wasm, none of the words listed in records/p5/noabc/p5-materials/byte-terms.txt appears in any file of the bundle (zlib is not compiled in: cmake option
+YOSYS_WITHOUT_ZLIB=ON), and the link of yosys.core.wasm had no input from the ABC tree (records/p5/noabc/p5-materials/names-diff.txt, records/p5/noabc/p5-materials/byte-terms.txt,
+records/p5/noabc/build/b1/diag/trace.txt). The sha256 of each file served are in runtime.json (`yosys.sha256`).
+
+  gen/bundle.js              JavaScript. Parts: YoWASP lib/api.js and gen/yosys-resources.js; @yowasp/runtime 11.0.72 (lib/fetch.js,
+                             wasi-virt.js, util.js, api.js); nanotar 0.2.1; gen/yosys.js, which is the output of `jco transpile` (jco 1.19.0);
+                             esbuild 0.25.11 helper code (the bundler). sha256 914588397948e94352ffbb90105dbf42c621c5a6e2e98a13006ca4abc1b82ea7.
+  gen/yosys.core.wasm        Yosys 0.68 (38e001a) and what is linked into it: see the table in section 2. sha256 c0f5249c3194ae9d8f9143fdffa70c2d03c7650481084be1bd9596f4502439fa.
+  gen/yosys.core2.wasm       The WASI preview1-to-preview2 adapter of jco 1.19.0 (Rust, rustc 1.82.0), as processed by `jco new`. sha256 d18ae4291eb6c1a0b64274048f1d314169def07a43f887825e25009b9e0b9bae.
+  gen/yosys.core3.wasm       Small tables and trampolines made by wit-component 0.245.1 (`jco new`). No third-party code was found in them. sha256 f85f89abf21f3e3958ad70e939303696fca27a83b5f85d81c71692093cdf5994.
+  gen/yosys.core4.wasm       The same. sha256 a4d95ce2fe69c19298e68b3ea57317789e1a1c9c86b9a987b0b711624922536e.
+  gen/yosys-resources.0.tar  NOT the tar of the build. It holds only three files, techmap.v, simcells.v and simlib.v, which are the files that the
+                             course's verifier and the schematic commands read (records/p5/resources-used/union-final.txt). The tar of the build has 75 files; the other 72 are
+                             not distributed. Each of the three carries the ISC notice of Yosys in its first lines (copyright line 4, permission 6-8).
+  share/simcells.v, share/simlib.v   The same files as in the tar.
+  yosys-worker.js, boot-module.js    Glue of Cresmaia Inc., MIT (see the NOTICE of the release).
+
+2. Components and licenses
+--------------------------
+"Seen in" says how it was found that the component is in the file: names = names in the `name` section of yosys.core.wasm; DWARF = source paths in its DWARF line table;
+link = inputs of the link of yosys.core.wasm (records/p5/noabc/build/b1/diag/trace.txt). The lists are records/p5/noabc/p5-materials/evidence-b1/wasm-name-evidence.txt (names), records/p5/noabc/p5-materials/evidence-b1/wasm-linked-library-sources.txt (DWARF), records/p5/noabc/build/b1/diag/trace.txt (link) and records/p5/noabc/p5-materials/linked-sources-notice-scan.tsv.
+Counts of names are of the form `names (X:: n)`: n names of yosys.core.wasm matched the regular expression of the component in records/p5/noabc/p5-materials/evidence-b1/wasm-name-evidence.txt (whole names, not cut;
+some expressions are anchored at the start of the name, others are not). A component that was not seen may still be in the file (section 5).
+
+Component                         License                                   Holder (as written in the files)                         Text in LICENSES/                                   Seen in
+--------------------------------  ----------------------------------------  -------------------------------------------------------  --------------------------------------------------  -------------------------
+Yosys                             ISC                                       Claire Xenia Wolf and the contributors named in the      ISC-Yosys-COPYING.txt,                              names (Yosys:: 4601); link (324 single objects)
+                                                                            files                                                     index-Yosys-38e001a-copyright-lines.txt
+Yosys libs/ezsat, libs/subcircuit ISC                                       Claire Xenia Wolf                                         ISC-Yosys-libs-ezsat-header.txt,                    names (ezSAT 73, SubCircuit 88); link
+                                                                                                                                      ISC-Yosys-libs-subcircuit-header.txt
+Yosys libs/minisat                MIT                                       Niklas Een, Niklas Sorensson                              MIT-Yosys-libs-minisat-LICENSE.txt                  names (Minisat:: 94)
+Yosys libs/json11                 MIT                                       Dropbox, Inc.                                             MIT-Yosys-libs-json11-header.txt                    names (json11:: 72)
+Yosys libs/bigint                 public domain (author's statement)        Matt McCutchen                                            PublicDomain-Yosys-libs-bigint-README-legal.txt     names (BigInteger, BigUnsigned: 23); link
+Yosys libs/sha1                   public domain (stated in the file)        Steve Reid; Bruce Guenter; Volker Grabsch;                PublicDomain-Yosys-libs-sha1-header.txt             names (SHA1:: 6)
+                                                                            Eugene Hopkinson
+Yosys libs/flex FlexLexer.h       BSD (University of California, 1993)      Regents of the University of California                  BSD-Yosys-libs-flex-FlexLexer-header.txt            names (FlexLexer)
+yosys-slang (sv-elab)             ISC                                       Martin Povišer                                           ISC-sv-elab-LICENSE.txt                             names (slang_frontend:: 299)
+slang                             MIT                                       Michael Popoloski                                         MIT-slang-LICENSE.txt                               names (slang:: 4943); link (libsvlang.a, 131 members)
+slang external/BS_thread_pool     MIT                                       Barak Shoshany                                            MIT-slang-external-BS_thread_pool-header.txt,       names (BS:: 25)
+                                                                                                                                      MIT-slang-LICENSES-MIT-template.txt
+slang external/boost_unordered,   Boost Software License 1.0                Peter Dimov, Joaquin M Lopez Munoz, Christian Mazakas,   BSL-1.0-slang-LICENSES.txt,                         names (boost::unordered 627)
+boost_concurrent                                                            Daniel James and others, as listed in the file            BSL-1.0-slang-external-boost_unordered-header.txt
+slang external/expected.hpp       Boost Software License 1.0                Martin Moene                                              BSL-1.0-slang-external-expected-header.txt          link (SourceManager, SyntaxTree, UserDefinedSubroutine in libsvlang.a include expected.hpp); not seen by name (header-only)
+boost_regex (MikePopoloski/regex) Boost Software License 1.0                John Maddock and others, as listed in the files           BSL-1.0-slang-LICENSES.txt,                         names (boost::re_detail_600 and
+                                                                                                                                      index-boost_regex-2b3ac08-copyright-lines.txt       others, 175)
+fmt                               MIT                                       Victor Zverovich and {fmt} contributors                   MIT-fmt-LICENSE.txt                                 names (fmt:: 138)
+toml++                            MIT                                       Mark Gillard                                              MIT-tomlplusplus-LICENSE.txt                        names (toml:: 384)
+cxxopts                           MIT                                       Jarryd Beck                                               MIT-cxxopts-LICENSE.txt                             names (cxxopts:: 145)
+symfpu                            GPL-3.0 or BSD-3-Clause; BSD-3-Clause is  the symfpu authors (see the file)                         symfpu-LICENSE.txt, BSD-3-Clause-symfpu-LICENSE-BSD.txt names (symfpu:: 68); link (symfpu.cc)
+                                  chosen by Cresmaia Inc.
+Yosys techlibs/quicklogic/        Apache-2.0                                F4PGA Authors (Copyright 2020-2022 F4PGA Authors,        Apache-2.0-LICENSE.txt                              link (3 objects); names (_GLOBAL__sub_I_ql_dsp_io_regs.cc,
+  ql_dsp_io_regs.cc, ql_dsp_macc.cc,                                          SPDX-License-Identifier: Apache-2.0 in the files)                                                              _macc.cc, _simd.cc)
+  ql_dsp_simd.cc
+  (These three C++ files carry the Apache-2.0 notice in their first 18 lines. They were in the YoWASP wasm too and were not named in the earlier notice.
+   The upstream repository chipsalliance/yosys-f4pga-plugins has no NOTICE file in its root: records/p5/noabc/p5-materials/fetched/FETCHED.tsv.)
+Read; nothing to carry: slang external/ieee1800/*.h (no copyright or license text in the files), Yosys kernel/hashlib.h ("free and unencumbered software released
+into the public domain", Claire Xenia Wolf)
+wasi-libc (as a whole)            Apache-2.0 WITH LLVM-exception,           the wasi-libc authors                                    wasi-libc-LICENSE.txt,                              DWARF (libc-bottom-half/sources,
+                                  Apache-2.0, MIT                                                                                     Apache-2.0-with-LLVM-exception-LICENSE.txt,         clocks, crt)
+                                                                                                                                      Apache-2.0-LICENSE.txt, MIT-wasi-libc-LICENSE-MIT.txt
+  musl (libc-top-half)            MIT                                       Rich Felker, et al. (list in the file)                    MIT-musl-COPYRIGHT-wasi-libc.txt                    DWARF (241 files)
+    musl math: FreeBSD msun / fdlibm  Sun Microsystems permission notice    Sun Microsystems, Inc.                                    Sun-fdlibm-musl-math-atan-header.txt,               DWARF (src/math)
+                                                                                                                                      Sun-fdlibm-musl-math-k_tan-header.txt
+    musl math: Arm optimized routines MIT                                   Arm Limited                                               MIT-Arm-musl-math-exp-header.txt                    DWARF (exp, log, pow ...)
+    musl qsort (smoothsort)       MIT                                       Valentin Ochs                                             MIT-musl-stdlib-qsort-header.txt                    DWARF (src/stdlib/qsort.c)
+  cloudlibc (libc-bottom-half)    BSD-2-Clause                              Nuxi                                                      BSD-2-Clause-cloudlibc-LICENSE.txt                  DWARF (33 files)
+  dlmalloc                        public domain / CC0 (stated in the file)  Doug Lea                                                  CC0-dlmalloc-notice.txt                             DWARF (dlmalloc.c, malloc.c)
+libc++, libc++abi, libunwind,     Apache-2.0 WITH LLVM-exception; the       LLVM Project contributors; University of Illinois        Apache-2.0-with-LLVM-exception-llvm-libcxx-LICENSE.TXT, DWARF (libcxx 32 files,
+compiler-rt builtins              "Legacy LLVM License" (University of      at Urbana-Champaign and others, in the files              Apache-2.0-with-LLVM-exception-llvm-libcxxabi-LICENSE.TXT, libcxxabi 15, libunwind 2,
+(llvm-project 4434dabb)           Illinois/NCSA and MIT) sections in each                                                              Apache-2.0-with-LLVM-exception-llvm-libunwind-LICENSE.TXT, compiler-rt 8)
+                                  LICENSE.TXT                                                                                         Apache-2.0-with-LLVM-exception-llvm-compiler-rt-LICENSE.TXT,
+                                                                                                                                      Apache-2.0-with-LLVM-exception-llvm-LICENSE.TXT
+jco 1.19.0 (output in bundle.js)  Apache-2.0 WITH LLVM-exception           the jco authors                                           Apache-2.0-with-LLVM-exception-jco-1.19.0-LICENSE.txt  package.json; npm provenance
+                                                                                                                                      (the same bytes as Apache-2.0-with-LLVM-exception-LICENSE.txt)
+WASI preview1 adapter (core2):    Apache-2.0 WITH LLVM-exception            The Wasmtime Project Developers                           Apache-2.0-with-LLVM-exception-wasmtime-LICENSE.txt  rustc 1.82.0 producers; 128 of 130
+wasmtime wasi-preview1-component-                                                                                                     (the same bytes)                                     function names equal to the
+adapter (4b6e961, workspace 30.0.1)                                                                                                                                                        adapter in jco 1.19.0
+  crate wasi 0.11.0               Apache-2.0 WITH LLVM-exception OR         (see the files)                                           Apache-2.0-with-LLVM-exception-wasi-crate-0.11.0-LICENSE-Apache-2.0_WITH_LLVM-exception.txt,
+                                                                                                                                      Apache-2.0-wasi-crate-0.11.0-LICENSE-APACHE.txt,
+                                                                                                                                      MIT-wasi-crate-0.11.0-LICENSE-MIT.txt                Cargo.toml of the adapter
+                                  Apache-2.0 OR MIT
+  crate bitflags 2.6.0            MIT OR Apache-2.0                         The Rust Project Developers                               MIT-bitflags-2.6.0-LICENSE-MIT.txt,                 Cargo.toml of the adapter
+                                                                                                                                      Apache-2.0-bitflags-2.6.0-LICENSE-APACHE.txt
+  crate wit-bindgen-rust-macro    Apache-2.0 WITH LLVM-exception OR         Alex Crichton                                             (the same texts as the crate wasi, above)                              Cargo.toml of the adapter
+  0.38.0 (generated code)         Apache-2.0 OR MIT
+  Rust 1.82.0 core library        MIT OR Apache-2.0                         The Rust Project Developers                               MIT-rust-1.82.0-LICENSE-MIT.txt,                    producers
+                                                                                                                                      Apache-2.0-rust-1.82.0-LICENSE-APACHE.txt,
+                                                                                                                                      Rust-1.82.0-COPYRIGHT.txt
+wit-component 0.245.1 (core3,     Apache-2.0 WITH LLVM-exception OR         The Bytecode Alliance                                     Apache-2.0-with-LLVM-exception-wasm-tools-LICENSE.txt, producers
+core4: output of the tool)        Apache-2.0 OR MIT                                                                                   Apache-2.0-wasm-tools-LICENSE-APACHE.txt,
+                                                                                                                                      MIT-wasm-tools-LICENSE-MIT.txt
+@yowasp/yosys (YoWASP build       ISC                                       Catherine <whitequark@whitequark.org>                     ISC-YoWASP-yosys-LICENSE.txt                        package.json; bundle.js
+scripts and lib/api.js)
+@yowasp/runtime 11.0.72           ISC                                       Catherine <whitequark@whitequark.org>                     ISC-YoWASP-runtime-LICENSE.txt (the same bytes as ISC-YoWASP-yosys-LICENSE.txt)         bundle.js
+nanotar 0.2.1                     MIT                                       Pooya Parsa                                               MIT-nanotar-0.2.1-LICENSE.txt                       bundle.js
+esbuild 0.25.11 (helper code)     MIT                                       Evan Wallace                                              MIT-esbuild-0.25.11-LICENSE.md                      bundle.js
+
+For Apache-2.0 WITH LLVM-exception texts, the exception reads (LICENSES/yosys/Apache-2.0-with-LLVM-exception-LICENSE.txt): "As an exception, if, as a result of your
+compiling your source code, portions of this Software are embedded into an Object form of such source code, you may redistribute such embedded portions in such Object form
+without complying with the conditions of Sections 4(a), 4(b) and 4(d) of the License." (the text goes on with a second paragraph on GPLv2 combined software). Where a component is offered under a choice
+("OR"), Cresmaia Inc. takes BSD-3-Clause for symfpu. For wasi 0.11.0, wit-bindgen-rust-macro 0.38.0 and wit-component 0.245.1, whose upstream says
+"Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", it takes the Apache-2.0 WITH LLVM-exception option. For bitflags 2.6.0 and the Rust 1.82.0 core library,
+whose upstream says "MIT OR Apache-2.0", it takes MIT (the texts of both are in LICENSES/yosys/).
+BS_thread_pool asks that software using it link to its repository in the documentation: slang uses BS_thread_pool 5.1.0
+(https://github.com/bshoshany/thread-pool).
+
+3. Texts that are in LICENSES/ but apply to no distributed file
+---------------------------------------------------------------
+  CC-BY-SA-3.0-slang-LICENSES.txt   slang names it for docs/cppreference-doxygen-web.tag.xml (cppreference.com). That file is documentation in docs/ of the slang
+                                     source; it is not in the files above. That docs/ is not an input of the build was read from the CMake files, not checked by a build.
+  GPL-3.0-symfpu-LICENSE-GPL3.txt   The other option of symfpu. Not chosen.
+  (The 11 F4PGA Apache-2.0 files of quicklogic/qlf_k6n10f/ in the YoWASP resource tar (not built here), and json11.hpp and sha1.h under include/ of it, are not distributed: the tar is cut down.
+   The tar of the build has no file with an Apache notice. The three Apache-2.0 C++ files in section 2 are in yosys.core.wasm and are distributed.)
+
+4. Where the corresponding source is
+------------------------------------
+Of the licenses named in section 2, none is a copyleft license that asks for the source of the binary (symfpu's GPL option is not chosen; the output of bison 3.8.2
+is under the special exception that the skeleton carries: bison.m4 lines 79-90 of the Ubuntu package bison 3.8.2+dfsg-1ubuntu0.24.04.1; the scanner of flex
+is free of the flex copyright: /usr/share/doc/flex/copyright of flex 2.6.4-8.2build1). This holds for the components found by name, DWARF and link (section 5, item 1).
+Cresmaia Inc. still records where the source is: Yosys 38e001a (https://github.com/YosysHQ/yosys), YoWASP 89b0bc1 (https://codeberg.org/YoWASP/yosys), the submodules
+(slang 8acc660, sv-elab 3dddccd, fmt a00f82c, tomlplusplus a43ad37, cxxopts 4bf61f0, symfpu 5d5e508, boost_regex 2b3ac08), wasi-sdk 33 (llvm-project 4434dabb,
+wasi-libc 161b319), jco jco-v1.19.0 (05555c1), wasmtime 4b6e961. ABC is not used (YosysHQ/abc 2a9e9c2 is not in the build).
+The binaries were built by Cresmaia Inc. from these sources twice with the same result (all 83 output files have the same sha256 in the two builds:
+records/p5/noabc/build/b1/sha256-artifacts.txt, records/p5/noabc/build/b1r/sha256-artifacts.txt); the differences from the YoWASP procedure are in section 1. The scripts of the build are not in the source of the release (section 4: no license here asks for the source).
+The wasi-sdk 33 sysroot (wasi-libc, libc++, libc++abi, libunwind, compiler-rt builtins) was not built by Cresmaia Inc.: it is the prebuilt tarball
+wasi-sdk-33.0-x86_64-linux.tar.gz (sha256 0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce), whose VERSION file says "33.0+m" with wasi-libc 161b3195fc25 and
+llvm 4434dabb6991. wasi-sdk applies four LLVM patches to its LLVM tree (libunwind, compiler-rt builtins, clang, libcxxabi: src/llvm-pr-*.patch in WebAssembly/wasi-sdk c10c050).
+
+5. What was not checked
+-----------------------
+  1. Components that are linked but whose names are not distinct, or that carry no debug information: the lists above come from names, from the DWARF line table
+     (354 translation units of the wasi-sdk sysroot only) and from the inputs of the link (records/p5/noabc/build/b1/diag/trace.txt: 809 lines of the link trace; 325 single objects and 484 archive
+     members; of the 455 Yosys-side inputs, 324 are single objects and 131 are members of libsvlang.a; 354 inputs are from wasi-sdk).
+     Yosys, slang and the other libraries were compiled without debug information; for them the names and the link inputs are the evidence. Other third-party code inside
+     Yosys may exist. The first 80 lines of the 324 single objects of Yosys and sv-elab were read for notices (records/p5/noabc/p5-materials/linked-sources-notice-scan.tsv): 272 carry
+     the ISC text, 3 the Apache-2.0 text (section 2), 5 the MIT text (json11, minisat), 1 public domain (sha1.cpp), 40 carry no permission text (covered by the COPYING of their tree),
+     and 3 are generated (not read). Not read: the 20 .pmg sources of the generated code (peepopt_muldiv_c.pmg says it was authored by Silimate, Inc. under the ISC license);
+     passes/cmds/sta.cc ("Adapted from" the nextpnr timing code, nextpnr being ISC); the notes in slang (util/Function.h, util/IntervalMap.h, numeric knuthDiv) that name LLVM as a model.
+  2. The notices of the many contributors of Yosys are listed by file counts in index-Yosys-38e001a-copyright-lines.txt, which is generated, not an upstream text.
+     The generated sources of bison and flex (frontends/verilog) and kernel/version.cc were not read as files (they exist only in the build).
+  3. The sysroot of wasi-sdk 33 was not rebuilt from its sources; that the prebuilt libraries were made from the sources named above is not checked
+     (the tarball carries no license text; the texts here are those of the upstream commits named in VERSION).
+  4. core2: the adapter in jco 1.19.0 (packages/jco/lib/wasi_snapshot_preview1.command.wasm, 57236 bytes) was, as jco's script scripts/update-wasi-p2.sh reads, built from
+     wasmtime commit 4b6e961 with rustc 1.82.0. That is an inference from the script and the producers value, not checked by rebuilding. The 130 function names of core2
+     are all in the adapter of jco, except allocate_stack and realloc_via_memory_grow (helper names of the processing by `jco new`). The Rust crates compiled into the adapter
+     were read from Cargo.toml and Cargo.lock only. That the output of jco (gen/yosys.js, core2 to core4) is covered by the license of jco is a reading, not checked with the authors.
+  5. The license text of the musl files that carry "Sun Microsystems" and "Arm" notices were copied from one file of each form; other files of the same form were not compared.
+  6. symfpu: BSD-3-Clause is chosen by Cresmaia Inc. (the file offers a choice of GPL V3 and BSD 3-Clause). boost_regex: the repository has no LICENSE file; the 56 files
+     of include/ and the 2 files of src/ carry the Boost Software License 1.0 notice. The BSL says that the notice need not be reproduced for machine-executable object code.
+  7. NOTICE files of upstream (Apache-2.0 section 4(d)): none was found in the root of F4PGA yosys-f4pga-plugins (7c89a55 and main), wasmtime 4b6e961, jco 05555c1, wasm-tools v1.245.1,
+     rust 1.82.0, llvm-project 4434dabb, wasi-sdk c10c050, nor in the crates wasi 0.11.0, bitflags 2.6.0 and wit-bindgen-rust-macro 0.38.0 (records/p5/noabc/p5-materials/fetched/FETCHED.tsv).
+  8. This notice is not a legal opinion.

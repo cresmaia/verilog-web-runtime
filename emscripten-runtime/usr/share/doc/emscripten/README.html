@@ -1,0 +1,34 @@
+<p><img src="media/switch_logo.png" alt="emscripten logo" /></p>
+<p>Main project page: <a href="https://emscripten.org">https://emscripten.org</a></p>
+<h2>Overview</h2>
+<p>Emscripten compiles C and C++ to <a href="https://webassembly.org/">WebAssembly</a> using
+<a href="https://en.wikipedia.org/wiki/LLVM">LLVM</a> and
+<a href="https://github.com/WebAssembly/binaryen/">Binaryen</a>. Emscripten output can run
+on the Web, in Node.js, and in
+<a href="https://v8.dev/blog/emscripten-standalone-wasm#running-in-wasm-runtimes">wasm runtimes</a>.</p>
+<p>Emscripten provides Web support for popular portable APIs such as OpenGL and
+SDL2, allowing complex graphical native applications to be ported, such as
+the <a href="https://docs.unity3d.com/Manual/webgl-gettingstarted.html">Unity game engine</a>
+and <a href="https://blog.chromium.org/2019/06/webassembly-brings-google-earth-to-more.html">Google Earth</a>.
+It can probably port your codebase, too!</p>
+<p>While Emscripten mostly focuses on compiling C and C++ using
+<a href="https://clang.llvm.org/">Clang</a>, it can be integrated with other LLVM-using
+compilers (for example, Rust has Emscripten integration, with the
+<code>wasm32-unknown-emscripten</code> and <code>asmjs-unknown-emscripten</code> targets).</p>
+<h2>License</h2>
+<p>Emscripten is available under 2 licenses, the MIT license and the
+University of Illinois/NCSA Open Source License.</p>
+<p>Both are permissive open source licenses, with little if any
+practical difference between them.</p>
+<p>The reason for offering both is that (1) the MIT license is
+well-known and suitable for a compiler toolchain, while
+(2) LLVM's original license, the University of Illinois/NCSA Open Source
+License, was also offered to allow Emscripten's code to be integrated
+upstream into LLVM. The second reason became less important after
+Emscripten switched to the LLVM wasm backend, at which point there
+isn't any code we expect to move back and forth between the projects;
+also, LLVM relicensed to Apache 2.0 + exceptions meanwhile. In practice you
+can just consider Emscripten as MIT licensed (which allows
+you to do pretty much anything you want with a compiler, including
+commercial and non-commercial use).</p>
+<p>See <code>LICENSE</code> for the full content of the licenses.</p>

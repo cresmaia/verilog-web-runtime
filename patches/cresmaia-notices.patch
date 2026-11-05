@@ -1,0 +1,140 @@
+--- a/ivl_dlfcn.h
++++ b/ivl_dlfcn.h
+@@ -1,3 +1,20 @@
++/*
++ * NOTICE OF CHANGES (GNU General Public License version 2, section 2(a))
++ *
++ * This file differs from the file of the same name in upstream Icarus Verilog
++ * (https://github.com/steveicarus/iverilog, commit 1a23d1ffdbff2192b5d43c57711a0e9e67b7bbbc).
++ *
++ * What was changed: Added a static-module mode (IVL_STATIC_MODULES, selected automatically for
++ *   Emscripten and WASI) in which ivl_dlopen()/ivl_dlsym()/ivl_dlclose()/dlerror()
++ *   look names up in a table (ivl_static_modules[]) instead of loading shared objects.
++ *
++ * Date of the change: on or before 2026-09-22. The change is the one in patches/iverilog-wasm.patch
++ *   of the repository cresmaia/verilog-web-runtime (the WebAssembly patch).
++ * This notice was added on 2026-10-19 by Cresmaia Inc.
++ * The next line, #line 1, makes the compiler number the lines of the rest of this file
++ * as it did before this notice was added, so that __LINE__ and assert messages do not change.
++ */
++#line 1
+ #ifndef IVL_ivl_dlfcn_H
+ #define IVL_ivl_dlfcn_H
+ /*
+--- a/vpi/fstapi.c
++++ b/vpi/fstapi.c
+@@ -1,4 +1,20 @@
+ /*
++ * NOTICE OF CHANGES (GNU General Public License version 2, section 2(a))
++ *
++ * This file differs from the file of the same name in upstream Icarus Verilog
++ * (https://github.com/steveicarus/iverilog, commit 1a23d1ffdbff2192b5d43c57711a0e9e67b7bbbc).
++ *
++ * What was changed: In fstWriterClose(), added an lseek() so that the dup()ed file descriptor starts at
++ *   the right offset (the added code comment says why).
++ *
++ * Date of the change: on or before 2026-09-22. The change is the one in patches/iverilog-wasm.patch
++ *   of the repository cresmaia/verilog-web-runtime (the WebAssembly patch).
++ * This notice was added on 2026-10-19 by Cresmaia Inc.
++ * The next line, #line 1, makes the compiler number the lines of the rest of this file
++ * as it did before this notice was added, so that __LINE__ and assert messages do not change.
++ */
++#line 1
++/*
+  * Copyright (c) 2009-2026 Tony Bybell.
+  *
+  * Permission is hereby granted, free of charge, to any person obtaining a
+--- a/vpi/sys_lxt.c
++++ b/vpi/sys_lxt.c
+@@ -1,4 +1,20 @@
+ /*
++ * NOTICE OF CHANGES (GNU General Public License version 2, section 2(a))
++ *
++ * This file differs from the file of the same name in upstream Icarus Verilog
++ * (https://github.com/steveicarus/iverilog, commit 1a23d1ffdbff2192b5d43c57711a0e9e67b7bbbc).
++ *
++ * What was changed: Changed close_dumpfile() to return void instead of void*, and removed the function-pointer
++ *   cast in the atexit() call.
++ *
++ * Date of the change: on or before 2026-09-22. The change is the one in patches/iverilog-wasm.patch
++ *   of the repository cresmaia/verilog-web-runtime (the WebAssembly patch).
++ * This notice was added on 2026-10-19 by Cresmaia Inc.
++ * The next line, #line 1, makes the compiler number the lines of the rest of this file
++ * as it did before this notice was added, so that __LINE__ and assert messages do not change.
++ */
++#line 1
++/*
+  * Copyright (c) 2002-2026 Stephen Williams (steve@icarus.com)
+  *
+  *    This source code is free software; you can redistribute it
+--- a/vpi/sys_lxt2.c
++++ b/vpi/sys_lxt2.c
+@@ -1,4 +1,20 @@
+ /*
++ * NOTICE OF CHANGES (GNU General Public License version 2, section 2(a))
++ *
++ * This file differs from the file of the same name in upstream Icarus Verilog
++ * (https://github.com/steveicarus/iverilog, commit 1a23d1ffdbff2192b5d43c57711a0e9e67b7bbbc).
++ *
++ * What was changed: Changed close_dumpfile() to return void instead of void*, and removed the function-pointer
++ *   cast in the atexit() call.
++ *
++ * Date of the change: on or before 2026-09-22. The change is the one in patches/iverilog-wasm.patch
++ *   of the repository cresmaia/verilog-web-runtime (the WebAssembly patch).
++ * This notice was added on 2026-10-19 by Cresmaia Inc.
++ * The next line, #line 1, makes the compiler number the lines of the rest of this file
++ * as it did before this notice was added, so that __LINE__ and assert messages do not change.
++ */
++#line 1
++/*
+  * Copyright (c) 2003-2026 Stephen Williams (steve@icarus.com)
+  *
+  *    This source code is free software; you can redistribute it
+--- a/vpi/vcd_priv2.cc
++++ b/vpi/vcd_priv2.cc
+@@ -1,4 +1,21 @@
+ /*
++ * NOTICE OF CHANGES (GNU General Public License version 2, section 2(a))
++ *
++ * This file differs from the file of the same name in upstream Icarus Verilog
++ * (https://github.com/steveicarus/iverilog, commit 1a23d1ffdbff2192b5d43c57711a0e9e67b7bbbc).
++ *
++ * What was changed: Added an inline mode (VCD_WORK_INLINE, selected automatically for Emscripten
++ *   without pthreads) in which the VCD work queue is drained in the calling thread
++ *   instead of in a separate std::thread.
++ *
++ * Date of the change: on or before 2026-09-22. The change is the one in patches/iverilog-wasm.patch
++ *   of the repository cresmaia/verilog-web-runtime (the WebAssembly patch).
++ * This notice was added on 2026-10-19 by Cresmaia Inc.
++ * The next line, #line 1, makes the compiler number the lines of the rest of this file
++ * as it did before this notice was added, so that __LINE__ and assert messages do not change.
++ */
++#line 1
++/*
+  * Copyright (c) 2010-2026 Stephen Williams (steve@icarus.com)
+  *
+  *    This source code is free software; you can redistribute it
+--- a/vvp/vpi_modules.cc
++++ b/vvp/vpi_modules.cc
+@@ -1,4 +1,21 @@
+ /*
++ * NOTICE OF CHANGES (GNU General Public License version 2, section 2(a))
++ *
++ * This file differs from the file of the same name in upstream Icarus Verilog
++ * (https://github.com/steveicarus/iverilog, commit 1a23d1ffdbff2192b5d43c57711a0e9e67b7bbbc).
++ *
++ * What was changed: In vpip_load_module(), added a branch for static-module builds
++ *   (IVL_STATIC_MODULES) that looks the VPI module up in the linked-in table instead
++ *   of searching the module path for a file.
++ *
++ * Date of the change: on or before 2026-09-22. The change is the one in patches/iverilog-wasm.patch
++ *   of the repository cresmaia/verilog-web-runtime (the WebAssembly patch).
++ * This notice was added on 2026-10-19 by Cresmaia Inc.
++ * The next line, #line 1, makes the compiler number the lines of the rest of this file
++ * as it did before this notice was added, so that __LINE__ and assert messages do not change.
++ */
++#line 1
++/*
+  * Copyright (c) 2001-2025 Stephen Williams (steve@icarus.com)
+  *
+  *    This source code is free software; you can redistribute it

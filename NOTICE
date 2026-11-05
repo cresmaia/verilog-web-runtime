@@ -1,0 +1,437 @@
+NOTICE
+======
+
+This notice comes with the files of the Verilog runtime (the "runtime"): a WebAssembly build of
+Icarus Verilog (ivlpp, ivl and vvp), a JavaScript driver, and small Web Worker files, published by
+Cresmaia Inc. (株式会社クレスマイア) in the repository cresmaia/verilog-web-runtime.
+
+The words "this release" mean the files listed in
+index.html of the release directory (/<version>/). Components that are not in this release are not listed here.
+The Yosys bundle (yosys-wasm/), in a release that has it, has its own notice (yosys-wasm/NOTICE).
+
+No part of the runtime is guaranteed to work or to be fit for any purpose. See "1. Warranty" below.
+
+1. Warranty and liability
+-------------------------
+
+THE RUNTIME IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. This applies to
+every component named below, as far as the license of the component allows. Each component's own license
+text (LICENSES/) states its own disclaimer. The names of the authors and copyright holders of a component are
+not used to endorse the runtime.
+
+2. How to get the source
+------------------------
+
+The complete corresponding source of the WebAssembly files in this release is in the directory "source/" of
+the release directory (the same place that serves the WebAssembly files), as runtime-source-<version>.tar.gz,
+with SHA256SUMS. It contains the source tree of Icarus Verilog, the patches, the build scripts, the records named in this NOTICE and in README.md, this NOTICE and LICENSES/. The same source is also in the repository cresmaia/verilog-web-runtime.
+How the WebAssembly files are built from it: README.md in the source (section "Reproducing the build") and
+build/eta2-check-scripts/ (copies of the scripts that made them; the paths of the machine where they ran are replaced, see build/README.md).
+The circuit diagram parts (sections 3.6 and 3.7) are not built from that tree. The sources of elkjs, of the Eclipse Layout Kernel, of the Eclipse Modeling Framework classes
+and of the Xtext library (org.eclipse.xtext.xbase.lib) classes inside elkjs are in the directory "source/third-party/" of the release directory, with their sha256 in SHA256SUMS; section 3.7 says which file is the source of which part.
+
+3. Components of this release
+-----------------------------
+
+3.1 Icarus Verilog (ivlpp.wasm, ivl.wasm, vvp.wasm, ivlpp.js, ivl.js, vvp.js, iverilog-wasm.js)
+
+  Upstream:  Icarus Verilog, https://github.com/steveicarus/iverilog, commit 1a23d1ffdbff2192b5d43c57711a0e9e67b7bbbc
+             (git describe: s20260301-476-g1a23d1ffd)
+  License:   GNU General Public License, version 2, or (at your option) any later version.
+             Text: LICENSES/GPL-2.0-iverilog-COPYING.txt
+  Copyright: Stephen Williams (steve@icarus.com) and the other authors named in the headers of the source files
+             (for example "Copyright (c) 2001-2026 Stephen Williams" in vvp/main.cc).
+
+  This program is free software; you can redistribute it and/or modify it under the terms of the GNU General
+  Public License as published by the Free Software Foundation; either version 2 of the License, or (at your
+  option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  Changes (GPL version 2, section 2(a)):
+  - The WebAssembly build is made with a patch to upstream: patches/iverilog-wasm.patch. It changes six upstream
+    files (ivl_dlfcn.h, vpi/fstapi.c, vpi/sys_lxt.c, vpi/sys_lxt2.c, vpi/vcd_priv2.cc, vvp/vpi_modules.cc) and
+    adds files under wasm/ (build script, JS driver, static module tables, a demo page and a worker). Each of the
+    six upstream files carries a notice of the change at its top; the date in the notices is "on or before 2026-09-22".
+    The copyright of the changes and of the files added by this patch is held by Cresmaia Inc.; they are distributed under
+    the GPL-2.0-or-later like the rest of Icarus Verilog (a file that carries its own header says so).
+  - Cresmaia Inc. changed the build script and added release_tag.h on 2026-10-18 so that the build does not
+    depend on the paths of the machine: patches/cresmaia-reproducible.patch.
+  - Cresmaia Inc. added the notices at the top of the six files on 2026-10-19: patches/cresmaia-notices.patch.
+  The WebAssembly files in this release were built from the source tree without the notices of
+  patches/cresmaia-notices.patch (they are comments and a "#line 1" line). A rebuild from the tree with the notices gave
+  the same three .wasm files (2026-10-19; records/stage2a-rebuild/A1-date/wasm.sha256; README.md, "The notices and the build").
+
+3.2 Third-party code that is in the source tree of Icarus Verilog and is built into the WebAssembly files
+
+  - LZ4 (vpi/lz4.c, lz4.h): BSD 2-Clause License, Copyright (C) 2011-2023, Yann Collet.
+    Text: LICENSES/lz4.txt (copied from vpi/lz4.c)
+  - FastLZ (vpi/fastlz.c, fastlz.h): MIT License ("SPDX-License-Identifier: MIT" in the file). As in the file:
+      Copyright (C) 2007 Ariya Hidayat (ariya@kde.org)
+      Copyright (C) 2006 Ariya Hidayat (ariya@kde.org)
+      Copyright (C) 2005 Ariya Hidayat (ariya@kde.org)
+    Text: LICENSES/fastlz.txt (copied from vpi/fastlz.c)
+  - fstapi (vpi/fstapi.c, fstapi.h): MIT License, Copyright (c) 2009-2026 Tony Bybell.
+    Text: LICENSES/fstapi.txt (copied from vpi/fstapi.c)
+  - lxt_write (vpi/lxt_write.c): MIT License, Copyright (c) 2001-2012 Tony Bybell.
+    Text: LICENSES/lxt_write.txt (copied from vpi/lxt_write.c)
+  - lxt2_write (vpi/lxt2_write.c): MIT License, Copyright (c) 2003-2016 Tony Bybell.
+    Text: LICENSES/lxt2_write.txt (copied from vpi/lxt2_write.c)
+  - mt19937int (vpi/mt19937int.c): the Mersenne Twister, Copyright (C) 1997 Makoto Matsumoto and Takuji Nishimura.
+    It is under the GNU Library General Public License, version 2 or (at your option) any later version, as the
+    header of the file says. The file is not touched by patches/iverilog-wasm.patch; it is as in the upstream
+    commit, and its notice is not rewritten. The text of the GNU Lesser General Public License version 2.1, which
+    comes with Icarus Verilog (tgt-vvp/COPYING.lesser), is in
+    LICENSES/LGPL-2.1-iverilog-tgt-vvp-COPYING.lesser.txt. The notice of the file is copied in LICENSES/mt19937int.txt. The whole source tree, including mt19937int.c, comes with
+    the release (section 2), so that the file can be changed and the WebAssembly files rebuilt.
+
+  Only the files that are compiled into the WebAssembly files matter; the source tree holds more files. The
+  header of every file names its own copyright holders and license.
+
+3.3 zlib and bzip2 (built into vvp.wasm and ivl.wasm; sources in build-wasm/deps/src/ of the source tree)
+
+  - zlib 1.3.1: zlib License, Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler.
+    Text: LICENSES/Zlib-zlib-1.3.1-LICENSE.txt
+  - bzip2 1.0.8: bzip2 and libbzip2 license, Copyright (C) 1996-2019 Julian R Seward.
+    Text: LICENSES/bzip2-1.0.8-LICENSE.txt
+  The sources were taken unchanged on 2026-10-18 from https://github.com/madler/zlib.git, tag v1.3.1 (commit 51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf), and from https://github.com/libarchive/bzip2.git, tag bzip2-1.0.8 (commit 6a8690fc8d26c815e798c588f796eabe9d684cf0).
+  The files of the tree are recorded in records/set2-tree.sha256.
+
+3.4 Emscripten 3.1.6 (the JavaScript of ivlpp.js, ivl.js and vvp.js, and the runtime libraries linked into the .wasm files)
+
+  The tool is the Ubuntu 24.04 package emscripten (Version 3.1.6~dfsg-7, Architecture all, Depends: binaryen, clang-15, lld-15, llvm-15, node-acorn, nodejs (>= 12), python3:any; the file emscripten_3.1.6~dfsg-7_all.deb of records/debs-a.sha256). Its files
+  are in emscripten-runtime/ (without the pre-built libraries; see README.md).
+  - Emscripten (the generated JavaScript and the compiler's own libraries): Copyright 2010-2022 The Emscripten
+    Authors; available under the MIT license and the University of Illinois/NCSA Open Source License (the Debian
+    copyright file, lines 28-37 and the license texts in it).
+    Text: LICENSES/MIT-NCSA-emscripten-3.1.6-LICENSE.txt (LICENSE of the tag 3.1.6 of https://github.com/emscripten-core/emscripten, commit c102a423a06d9833a8481d6859888bebf22842b0).
+  - musl libc (system/lib/libc/musl): MIT license, with some files under other licenses named in the files and
+    in the Debian copyright file. Text: LICENSES/MIT-musl-COPYRIGHT.txt (musl's COPYRIGHT file).
+  - dlmalloc (system/lib/dlmalloc.c): public domain.
+  - libc++, libc++abi and compiler-rt (system/lib/libcxx, libcxxabi, compiler-rt): Apache License 2.0 with LLVM
+    Exceptions. The texts (the Apache License 2.0 and the LLVM exception) are the LICENSE.TXT files of LLVM
+    llvmorg-15.0.7, in LICENSES/Apache-2.0-with-LLVM-exception-llvmorg-15.0.7-*-LICENSE.TXT. They are from LLVM
+    15.0.7, which may not be the version that Emscripten 3.1.6 took its libc++ from.
+  - The Debian copyright file of the package, with the licenses of all other files in it:
+    LICENSES/Emscripten-3.1.6-dfsg-7-debian-copyright.txt
+  The package's system/ directory, which holds the sources of the runtime libraries, is in
+  emscripten-runtime/usr/share/emscripten/system/. The ten runtime libraries that the build links (libGL, libal, libc, libc++-noexcept,
+  libc++abi-noexcept, libcompiler_rt, libhtml5, libdlmalloc, libsockets, libstubs) were rebuilt from emscripten-runtime/ with embuilder
+  on 2026-10-19, and the three .wasm files were linked again with them, in containers without a network and with the same 113 tool
+  packages: the three .wasm files are the same as the distributed ones (records/p4/relink/run/W_R/wasm-compare.txt). The tools themselves
+  (the compiler and the other packages) were not part of this check.
+
+3.5 Code by Cresmaia Inc. in this release (Web Worker files, a notice component, a demo page)
+
+  - License: MIT License (LICENSES/MIT-cresmaia-glue.txt). Copyright (c) 2026 Cresmaia Inc.
+  glue/worker.js was made from wasm/demo/worker.js of the WebAssembly patch (the same file as iverilog/wasm/demo/worker.js in the source).
+  Cresmaia Inc., the copyright holder, also publishes glue/worker.js under the MIT license.
+  These files are not part of Icarus Verilog. They run in the same Web Worker as the GPL-licensed
+  WebAssembly files and are published here under a license that is compatible with the GPL.
+  glue/schematic-worker.js and glue/boot-schematic.js (the start-up template of the schematic Worker) are by Cresmaia Inc. as well, under the MIT license. They run in a Web Worker of their own,
+  with netlistsvg and elkjs (sections 3.6 and 3.7), and in no Worker that holds a GPL-licensed file.
+
+3.6 netlistsvg 1.0.2 and the parts inside its bundle (netlistsvg/built/netlistsvg.bundle.js)
+
+  glue/schematic-worker.js loads this file and elkjs (section 3.7) in a Web Worker of its own, which holds no GPL-licensed part (docs/protocol.md). The bundle
+  is the file built/netlistsvg.bundle.js of the npm package netlistsvg 1.0.2, placed unchanged (its sha256 is pinned in records/schematic.sha256; where it comes from:
+  records/schematic-sources.tsv). The text of this section is a reading of the files that were read (the files of the npm tarballs named in records/p6/licenses.tsv); it is not a legal opinion.
+
+  - netlistsvg 1.0.2: MIT License, Copyright (c) 2016 Neil Turley. Text: LICENSES/MIT-netlistsvg-1.0.2-LICENSE.txt (the same bytes are placed next to the bundle as netlistsvg/LICENSE).
+
+  What is inside the bundle (R8 P6; records/p6/modules.tsv has one line for each module). The bundle is a browserify bundle of 94 modules. Each module was compared, byte for byte (after the
+  normalizations listed at the end of this section), with the files of the published versions of the packages named below. 87 modules were found equal to such files;
+  they are the modules of the packages listed here. For a package, the "remaining versions" are the versions whose files are equal to ALL the matched modules of that
+  package; they are named below. Where more than one version remains, the record has no way to tell which of them is in the bundle (the lock of the build is not known);
+  the license text that was read is that of the remaining versions, and where the texts differ between them, each distinct text is placed.
+  The other 7 modules were not found equal to any file of netlistsvg 1.0.2 or of the other packages (records/p6/unmatched.txt); the check compared them with the
+  files of 1.0.2 only. All 7 are modules of netlistsvg's own code. Later comparisons (with the files of the npm tarballs of netlistsvg 1.0.0 and 1.0.1, and with the git blobs in the history of https://github.com/nturley/netlistsvg, cloned on 2026-10-31; not part of the counts above): modules 2, 4, 6, 7 and 8 are
+  equal to the files built/FlatModule.js, built/Skin.js, built/drawModule.js, built/elkGraph.js and built/index.js of netlistsvg 1.0.0 and 1.0.1 (published 2019-05-04);
+  module 9 is equal to jsmodule/index.js of netlistsvg 1.0.0; module 1 is equal to built/Cell.js of the git history of netlistsvg (commit 9b6f0e0, 2019-04-23; there the
+  LICENSE is the same as that of 1.0.2) and to no published file. They are covered by the netlistsvg MIT license above. The 7 stay "not matched" in the record.
+  The license of each package was read from the license file of the tarball of that version, or, where the package has none, from the README (below).
+
+  - ajv (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 6.10.0. This text is that of: 6.10.0.
+    Copyright (c) 2015-2017 Evgeny Poberezkin
+    Text: LICENSES/MIT-ajv-6.10.0-LICENSE.txt
+  - ajv-errors (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.0.1. This text is that of: 1.0.1.
+    Copyright (c) 2017 Evgeny Poberezkin
+    Text: LICENSES/MIT-ajv-errors-1.0.1-LICENSE.txt
+  - base64-js (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.3.0. This text is that of: 1.3.0.
+    Copyright (c) 2014
+    Text: LICENSES/MIT-base64-js-1.3.0-LICENSE.txt
+  - browserify (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 16.2.3, 16.3.0, 16.4.0, 16.5.0, 16.5.1, 16.5.2. This text is that of: 16.2.3.
+    Copyright Joyent, Inc. and other Node contributors.; Copyright (c) 2008-2015, Fair Oaks Labs, Inc.
+    Text: LICENSES/MIT-browserify-16.2.3-LICENSE.txt
+  - browserify (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 16.2.3, 16.3.0, 16.4.0, 16.5.0, 16.5.1, 16.5.2. This text is that of: 16.3.0, 16.4.0, 16.5.0, 16.5.1, 16.5.2.
+    Copyright (c) 2010 James Halliday
+    Text: LICENSES/MIT-browserify-16.3.0-LICENSE.txt
+  - buffer (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 5.2.1. This text is that of: 5.2.1.
+    Copyright (c) Feross Aboukhadijeh, and other contributors.
+    Text: LICENSES/MIT-buffer-5.2.1-LICENSE.txt
+  - clone (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.1.2. This text is that of: 2.1.2.
+    Copyright © 2011-2015 Paul Vorbach <paul@vorba.ch>
+    Text: LICENSES/MIT-clone-2.1.2-LICENSE.txt
+  - core-util-is (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.0.2. This text is that of: 1.0.2.
+    Copyright Node.js contributors. All rights reserved.
+    Text: LICENSES/MIT-core-util-is-1.0.2-LICENSE.txt
+  - events (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.1.0. This text is that of: 2.1.0.
+    Copyright Joyent, Inc. and other Node contributors.
+    Text: LICENSES/MIT-events-2.1.0-LICENSE.txt
+  - fast-deep-equal (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.0.1. This text is that of: 2.0.1.
+    Copyright (c) 2017 Evgeny Poberezkin
+    Text: LICENSES/MIT-fast-deep-equal-2.0.1-LICENSE.txt
+  - fast-json-stable-stringify (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.0.0, 2.1.0. This text is that of: 2.0.0.
+    the text names no copyright holder
+    Text: LICENSES/MIT-fast-json-stable-stringify-2.0.0-LICENSE.txt
+  - fast-json-stable-stringify (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.0.0, 2.1.0. This text is that of: 2.1.0.
+    Copyright (c) 2017 Evgeny Poberezkin; Copyright (c) 2013 James Halliday
+    Text: LICENSES/MIT-fast-json-stable-stringify-2.1.0-LICENSE.txt
+  - ieee754 (BSD-3-Clause). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.1.9, 1.1.10, 1.1.11, 1.1.12, 1.1.13. This text is that of: 1.1.13.
+    Copyright 2008 Fair Oaks Labs, Inc.
+    Text: LICENSES/BSD-3-Clause-ieee754-1.1.13-LICENSE.txt
+  - ieee754 (BSD-3-Clause). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.1.9, 1.1.10, 1.1.11, 1.1.12, 1.1.13. This text is that of: 1.1.9, 1.1.10, 1.1.11, 1.1.12.
+    Copyright (c) 2008, Fair Oaks Labs, Inc.
+    Text: LICENSES/BSD-3-Clause-ieee754-1.1.9-LICENSE.txt
+  - inherits (ISC). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.0.1, 2.0.3. This text is that of: 2.0.1, 2.0.3.
+    Copyright (c) Isaac Z. Schlueter
+    Text: LICENSES/ISC-inherits-2.0.1-LICENSE.txt
+  - is-buffer (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.1.6. This text is that of: 1.1.6.
+    Copyright (c) Feross Aboukhadijeh
+    Text: LICENSES/MIT-is-buffer-1.1.6-LICENSE.txt
+  - isarray (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.0.0. This text is that of: 1.0.0.
+    Copyright (c) 2013 Julian Gruber &lt;julian@juliangruber.com&gt;
+    Text: LICENSES/MIT-isarray-1.0.0-README-License-section.md
+  - json-schema-traverse (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 0.4.1. This text is that of: 0.4.1.
+    Copyright (c) 2017 Evgeny Poberezkin
+    Text: LICENSES/MIT-json-schema-traverse-0.4.1-LICENSE.txt
+  - json5 (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 0.5.1. This text is that of: 0.5.1.
+    Copyright (c) 2012-2016 Aseem Kishore, and [others](https://github.com/aseemk/json5/contributors).
+    Text: LICENSES/MIT-json5-0.5.1-LICENSE.md
+  - lodash (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 4.17.11. This text is that of: 4.17.11.
+    Copyright JS Foundation and other contributors <https://js.foundation/>; Based on Underscore.js, copyright Jeremy Ashkenas,
+    Text: LICENSES/MIT-lodash-4.17.11-LICENSE.txt
+  - onml (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 0.3.1. This text is that of: 0.3.1.
+    Copyright (c) 2015 Aliaksei Chapyzhenka
+    Text: LICENSES/MIT-onml-0.3.1-LICENSE.txt
+  - process (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 0.11.10. This text is that of: 0.11.10.
+    Copyright (c) 2013 Roman Shtylman <shtylman@gmail.com>
+    Text: LICENSES/MIT-process-0.11.10-LICENSE.txt
+  - process-nextick-args (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.0.0. This text is that of: 2.0.0.
+    Copyright (c) 2015 Calvin Metcalf
+    Text: LICENSES/MIT-process-nextick-args-2.0.0-license.md
+  - readable-stream (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.3.6. This text is that of: 2.3.6.
+    Copyright Node.js contributors. All rights reserved.; Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+    Text: LICENSES/MIT-readable-stream-2.3.6-LICENSE.txt
+  - safe-buffer (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 5.1.1, 5.1.2. This text is that of: 5.1.1, 5.1.2.
+    Copyright (c) Feross Aboukhadijeh
+    Text: LICENSES/MIT-safe-buffer-5.1.1-LICENSE.txt
+  - sax (ISC). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.2.4. This text is that of: 1.2.4.
+    Copyright (c) Isaac Z. Schlueter and Contributors; Copyright Mathias Bynens <https://mathiasbynens.be/>
+    Text: LICENSES/ISC-sax-1.2.4-LICENSE.txt
+  - stream-browserify (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.0.0, 2.0.1, 2.0.2. This text is that of: 2.0.0, 2.0.1.
+    the text names no copyright holder
+    Text: LICENSES/MIT-stream-browserify-2.0.0-LICENSE.txt
+  - stream-browserify (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 2.0.0, 2.0.1, 2.0.2. This text is that of: 2.0.2.
+    Copyright (c) James Halliday
+    Text: LICENSES/MIT-stream-browserify-2.0.2-LICENSE.txt
+  - string_decoder (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.1.1, 1.2.0, 1.3.0. This text is that of: 1.1.1, 1.2.0, 1.3.0.
+    Copyright Node.js contributors. All rights reserved.; Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+    Text: LICENSES/MIT-string_decoder-1.1.1-LICENSE.txt
+  - timers-browserify (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.4.0, 1.4.1, 1.4.2. This text is that of: 1.4.0, 1.4.1, 1.4.2.
+    Copyright © 2012 J. Ryan Stinnett <jryans@gmail.com>; Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+    Text: LICENSES/MIT-timers-browserify-1.4.0-LICENSE.md
+  - uri-js (BSD-2-Clause). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 4.2.2. This text is that of: 4.2.2.
+    Copyright 2011 Gary Court. All rights reserved.
+    Text: LICENSES/BSD-2-Clause-uri-js-4.2.2-README-License-section.md
+    The uri-js module in the bundle contains code of punycode.js. No separate notice of punycode was found in the bundle, and none is placed (NOT CHECKED).
+  - util-deprecate (MIT). Versions with files equal to all the matched modules ("remaining versions"; records/p6/licenses.tsv): 1.0.2. This text is that of: 1.0.2.
+    Copyright (c) 2014 Nathan Rajlich <nathan@tootallnate.net>
+    Text: LICENSES/MIT-util-deprecate-1.0.2-LICENSE.txt
+
+  Two packages have no license file. isarray 1.0.0 (repository juliangruber/isarray, commit 2a23a281f369e9ae06394c0fb4d2381355a6ba33) and uri-js 4.2.2 (repository
+  garycourt/uri-js, commit 4f6f600fade03398c08adf2755c3a2ad66d31b3c) say their license only in the "License" section of their README.md. That section is placed
+  as the text of the license (LICENSES/MIT-isarray-1.0.0-README-License-section.md, LICENSES/BSD-2-Clause-uri-js-4.2.2-README-License-section.md). The isarray section
+  has "&lt;" and "&gt;" in the e-mail address as the README has them. Lodash's text also states the other holders of the code it is based on (Underscore.js: Jeremy
+  Ashkenas, DocumentCloud and Investigative Reporters & Editors); it is placed whole.
+  Not checked: whether the 87 modules together with the 7 are all the code of the bundle (the text between the modules and the wrapper of browserify was compared
+  as a whole: the parts cut out of the bundle, joined again, give the bundle byte for byte (1,180,007 bytes); the 831 bytes of the wrapper before the modules and the end of the file were not compared with any tarball); whether a module contains code copied from another package that has its own notice.
+  Normalizations before the comparison (the column "normalizations" of records/p6/modules.tsv). Fixed before the comparison: (n1) the wrapper of
+  insert-module-globals ("(function (" with the arguments process, global, Buffer, __filename, __dirname, setImmediate and clearImmediate, in this order, and
+  "}).call(this, ... )") is taken off; (n2) the JSON after "module.exports=" is compared with the JSON file as values; (n3) a string that brfs put in place of
+  fs.readFileSync(...) is put back when it equals the bytes of the file named, in the same tarball; (n4) the form that browserify-shim put in place of require("elkjs") is put back.
+  Added after the first results had been seen (with n1 to n4 only, 83 modules matched): (a1) a module whose body is arguments[4][N][0].apply(exports,arguments)
+  (a reference to module N) is compared with the body of module N put in its place; (a2) an empty body is compared with the empty file lib/_empty.js of browserify;
+  (a3) n3 also allows Buffer("...","base64") and the removal of the statement const fs = require('fs'); (a4) a relative require that goes one level above the root
+  of a package is given to the package next to it; (a5) a "//# sourceMappingURL=" (or /*# ... */) comment of the file is taken off.
+
+3.7 elkjs 0.12.0 (elkjs/lib/elk.bundled.js) and the parts inside it
+
+  glue/schematic-worker.js loads this file with netlistsvg (section 3.6). The file is lib/elk.bundled.js of the npm package elkjs 0.12.0, placed unchanged (sha256
+  pinned in records/schematic.sha256; records/schematic-sources.tsv). It was made from Java sources by the GWT compiler. The parts inside it were looked for by the
+  names of their Java classes (R8 P7; records/p7/classes.tsv has one line for each class name, with the part it was assigned to: K1 elkjs, K2 ELK, K3 GWT, K4 Guava, K5 emf-gwt, K6 the Xtext library): 1,970 class names were found; 1,969 were assigned to a part by name. This is a reading of the files that
+  were read; it is not a legal opinion.
+
+  3.7.1 elkjs and the Eclipse Layout Kernel (ELK), under the Eclipse Public License 2.0
+
+  - elkjs 0.12.0 and the Eclipse Layout Kernel (ELK) v0.12.0 (the class names found in the file: 1,122 are ELK's (K2 in records/p7/classes.tsv) and 2 are elkjs's own (K1)): offered by their authors as "EPL-2.0 OR GPL-3.0-or-later"
+    (the package.json and the LICENSE.md of the tarball, and the headers of the source files). Cresmaia Inc. uses them under the Eclipse Public License - v 2.0 (EPL-2.0),
+    and not under the GPL-3.0-or-later. Text: LICENSES/EPL-2.0-elkjs-0.12.0-LICENSE.md (the same bytes are placed next to the file as elkjs/LICENSE.md, as the package carries
+    them. Section 3.2(b) asks for a copy of the Agreement with each copy of the Program when it is distributed as Source Code; elk.bundled.js is a generated file, and the copy is placed in any case).
+  - Copyright: the headers of the Java files of ELK's plugins (803 files in plugins/*/src of the tag v0.12.0) name mostly "Kiel University and others", also TypeFox GmbH,
+    itemis AG, Obeo, Primetals Technologies Austria GmbH, Christoph Daniel Schulze and others. ELK's NOTICE.md says: "All content is the property of the respective authors
+    or their employers." The notices in the headers of the source files are in the source (below); they are not collected into this NOTICE.
+  - Source Code (EPL-2.0 Section 3.1(a)): the Source Code of the Program (elkjs 0.12.0 and the ELK Java sources it is built from) is available under the Eclipse Public
+    License 2.0. You can get it
+      * from Cresmaia Inc., with this release: source/third-party/elkjs-0.12.0-github-tag.tar.gz and source/third-party/elk-v0.12.0-github-tag.tar.gz (in the release directory,
+        next to the WebAssembly files; sha256 in source/SHA256SUMS);
+      * from https://github.com/kieler/elkjs (tag 0.12.0, commit ff5771d7165445c42c408bb8a090c8035272218c);
+      * from the Eclipse Layout Kernel, https://github.com/eclipse-elk/elk (tag v0.12.0, commit 323312916048544e4e594eab3303cdb0d01e2929).
+    Not recorded: the exact ELK commit from which the npm package was built (the elkjs README says that its minor version is the same as ELK's; the build does not pin the commit).
+    The sources of the Xtext library (org.eclipse.xtext.xbase.lib, 3.7.3) are in the release too. The sources of the other parts inside the file (GWT and Guava, 3.7.3) are not in the release; where they can be had is named there.
+  - Warranty (EPL-2.0 Sections 5 and 6, which apply to the Program as it is distributed): elkjs is distributed under the EPL-2.0 as it is. Cresmaia Inc. gives no warranty
+    for elkjs. Under Section 5, "EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE PROGRAM IS PROVIDED ON AN “AS IS” BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED" (the full sentence and the rest of Section 5 are in the license file). Under Section 6, "EXCEPT AS
+    EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT PERMITTED BY APPLICABLE LAW, NEITHER RECIPIENT NOR ANY CONTRIBUTORS SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES" arising from the use or distribution of the Program (the full text is in the license file).
+  - Note on Section 3.1(b): EPL-2.0 Section 3.1(b) lets a Contributor distribute the Program under a license different from the EPL, on conditions (i) to (iv). It applies only to
+    such a distribution. Here the Program is distributed under the EPL-2.0 itself, so 3.1(b) does not apply, and this notice does not use the EPL-1.0 wording ("offered by ... alone,
+    not by any other Contributor") for elkjs. For the EMF classes inside the file, which are under the EPL-1.0, 3.7.2 does. See docs/notes-epl.md.
+  - Section 4 (commercial distribution, indemnification): Cresmaia Inc. may be a "Commercial Contributor". Cresmaia Inc. has decided how it takes up Section 4; that is not part of this notice.
+  - glue/schematic-worker.js and glue/boot-schematic.js are separate files under the MIT license (section 3.5); they are not part of the Program.
+
+  3.7.2 Eclipse Modeling Framework (EMF) classes, under the Eclipse Public License 1.0
+
+  - What: classes of the Eclipse Modeling Framework in the version for GWT of GenMyModel, "emf-gwt" 2.12.4 (Maven Central: com.genmymodel.emf.gwt:emf-common:2.12.4 and
+    com.genmymodel.emf.gwt:emf-ecore:2.12.4). 395 of the 1,970 class names inside elk.bundled.js were assigned to it, by the names of the Java files in its jars. The
+    headers of its source files say "made available under the terms of the Eclipse Public License v1.0" and the pom of the project says "The Eclipse Public License v1.0".
+    Text: LICENSES/EPL-1.0-eclipse-epl-v10.txt (the text of the page https://www.eclipse.org/legal/epl-v10.html of the Eclipse Foundation, fetched 2026-11-02, taken out of the
+    HTML with tools/r8-notices/extract_epl10.py; records/schematic-sources.tsv).
+  - Copyright: the headers of the 201 Java files in the two sources jars name: IBM Corporation and others (the years 2002 to 2014; in one file "IBM Corporation, itemis AG, CEA, and
+    others"), Ed Merks and others, TIBCO Software Inc. and others, Zeligsoft Inc. and others, Kenn Hussey and others. (The 201 files are all the Java files in the two sources jars; fewer
+    of them are inside elk.bundled.js.) The two jars have no license file, no NOTICE and no about file (records/p7/licenses.tsv); the text of the license is the Eclipse Foundation's.
+    How emf-gwt 2.12.4 corresponds to a version of the Eclipse Modeling Framework itself is not recorded (a guess only).
+  - EPL-1.0 Section 3: Cresmaia Inc. distributes these classes in object code form (inside the JavaScript file, which is made by the GWT compiler) together with elkjs, and states:
+      (i)   Cresmaia Inc. effectively disclaims, on behalf of all Contributors, all warranties and conditions, express and implied, including warranties or conditions of title
+            and non-infringement, and implied warranties or conditions of merchantability and fitness for a particular purpose.
+      (ii)  Cresmaia Inc. effectively excludes, on behalf of all Contributors, all liability for damages, including direct, indirect, special, incidental and consequential
+            damages, such as lost profits.
+      (iii) Any provisions of this NOTICE, of the index pages of this release, or of any other terms under which Cresmaia Inc. makes this release available, that differ from the
+            Eclipse Public License v1.0 are offered by Cresmaia Inc. alone and not by any other party (not by IBM, the Eclipse Foundation, GenMyModel or any other Contributor).
+      (iv)  Source code for these classes is available from Cresmaia Inc.: the two files source/third-party/emf-common-2.12.4-sources.jar and
+            source/third-party/emf-ecore-2.12.4-sources.jar of this release directory (sha256 in source/SHA256SUMS; they are the sources jars of emf-gwt 2.12.4 as they were fetched, unchanged),
+            and Cresmaia Inc. gives the same files on request. They are also on Maven Central:
+              https://repo1.maven.org/maven2/com/genmymodel/emf/gwt/emf-common/2.12.4/emf-common-2.12.4-sources.jar
+              https://repo1.maven.org/maven2/com/genmymodel/emf/gwt/emf-ecore/2.12.4/emf-ecore-2.12.4-sources.jar
+            How to ask Cresmaia Inc.: write to info@cresmaia.co.jp.
+    Section 3 of the EPL-1.0 also says that Contributors may not remove or alter any copyright notices contained within the Program: the notices of the source files are in the sources jars as they are.
+
+  3.7.3 Other parts inside elk.bundled.js (the names of their classes were assigned to them; records/p7/classes.tsv)
+
+  - Apache Software License, Version 1.1: the classes org.eclipse.emf.ecore.xml.type.internal.RegEx and its nested classes (15 class names). They come from RegEx.java of emf-ecore
+    2.12.4, whose head carries, in addition to the EPL-1.0 text of 3.7.2, the license of the Apache Software Foundation (its Xerces code) and a statement about International Business Machines.
+    The head of that file is copied here whole (the comment marks /**, * and */ are taken off; the words are not changed; the same text is LICENSES/Apache-1.1-emf-ecore-2.12.4-RegEx-java-header.txt):
+
+      Copyright (c) 2004-2010 IBM Corporation and others.
+      All rights reserved.   This program and the accompanying materials
+      are made available under the terms of the Eclipse Public License v1.0
+      which accompanies this distribution, and is available at
+      http://www.eclipse.org/legal/epl-v10.html
+
+      Contributors:
+        IBM - Initial API and implementation
+
+      ---------------------------------------------------------------------
+
+      The Apache Software License, Version 1.1
+
+
+      Copyright (c) 1999-2004 The Apache Software Foundation.  All rights
+      reserved.
+
+      Redistribution and use in source and binary forms, with or without
+      modification, are permitted provided that the following conditions
+      are met:
+
+      1. Redistributions of source code must retain the above copyright
+         notice, this list of conditions and the following disclaimer.
+
+      2. Redistributions in binary form must reproduce the above copyright
+         notice, this list of conditions and the following disclaimer in
+         the documentation and/or other materials provided with the
+         distribution.
+
+      3. The end-user documentation included with the redistribution,
+         if any, must include the following acknowledgment:
+            "This product includes software developed by the
+             Apache Software Foundation (http://www.apache.org/)."
+         Alternately, this acknowledgment may appear in the software itself,
+         if and wherever such third-party acknowledgments normally appear.
+
+      4. The names "Xerces" and "Apache Software Foundation" must
+         not be used to endorse or promote products derived from this
+         software without prior written permission. For written
+         permission, please contact apache@apache.org.
+
+      5. Products derived from this software may not be called "Apache",
+         nor may "Apache" appear in their name, without prior written
+         permission of the Apache Software Foundation.
+
+      THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
+      WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+      OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+      DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
+      ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+      SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+      LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+      USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+      ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+      OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+      OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+      SUCH DAMAGE.
+      ====================================================================
+
+      This software consists of voluntary contributions made by many
+      individuals on behalf of the Apache Software Foundation and was
+      originally based on software copyright (c) 1999-2003, International
+      Business Machines, Inc., http://www.apache.org.  For more
+      information on the Apache Software Foundation, please see
+      <http://www.apache.org/>.
+
+    Condition 3 of that license asks that the documentation of the redistribution include the following acknowledgment:
+      This product includes software developed by the Apache Software Foundation (http://www.apache.org/).
+    (The head of DataValue.java in the same jar has the same text; no class of that file was found inside elk.bundled.js.)
+  - Google Web Toolkit (GWT) 2.11.0 (239 class names; the runtime classes that the GWT compiler adds to the output): Apache License 2.0. Text: LICENSES/Apache-2.0-gwt-2.11.0-COPYING.txt
+    (user/src/com/google/gwt/core/COPYING of the tag 2.11.0). No NOTICE file was found in the jar or in the tag. Two files carry only "Copyrighted to the Android Open Source Project".
+  - Guava (the GWT version, guava-gwt 31.1-jre; 208 class names): Apache License 2.0. Text: LICENSES/Apache-2.0-guava-31.1-COPYING.txt (COPYING of the tag v31.1). No NOTICE file was found.
+  - Xtext library, org.eclipse.xtext.xbase.lib (version 2.36.0; 3 class names): Eclipse Public License 2.0. Text: LICENSES/EPL-2.0-xtext-2.36.0-LICENSE.txt (LICENSE of the tag v2.36.0). This part is under the
+    EPL-2.0 as well. Source Code (EPL-2.0 Section 3.1(a)): the Source Code of this part is available under the Eclipse Public License 2.0. You can get it
+      * from Cresmaia Inc., with this release: the two files source/third-party/org.eclipse.xtend.lib-2.36.0-sources.jar and
+        source/third-party/org.eclipse.xtext.xbase.lib-2.36.0-sources.jar of this release directory (sha256 in source/SHA256SUMS; they are the -sources.jar files of
+        org.eclipse.xtend:org.eclipse.xtend.lib:2.36.0 and org.eclipse.xtext:org.eclipse.xtext.xbase.lib:2.36.0 as they were fetched from Maven Central, unchanged),
+        and Cresmaia Inc. gives the same files on request (write to info@cresmaia.co.jp);
+      * from https://github.com/eclipse-xtext/xtext (tag v2.36.0, commit 6c3118540d0d646b604079b1f4e9dd89fe4a9bd9);
+      * from Maven Central, the -sources.jar files of
+        org.eclipse.xtend:org.eclipse.xtend.lib:2.36.0 (https://repo1.maven.org/maven2/org/eclipse/xtend/org.eclipse.xtend.lib/2.36.0/org.eclipse.xtend.lib-2.36.0-sources.jar) and
+        org.eclipse.xtext:org.eclipse.xtext.xbase.lib:2.36.0 (https://repo1.maven.org/maven2/org/eclipse/xtext/org.eclipse.xtext.xbase.lib/2.36.0/org.eclipse.xtext.xbase.lib-2.36.0-sources.jar).
+    The three class names are those of org.eclipse.xtext.xbase.lib (ExclusiveRange.java); no class of org.eclipse.xtend.lib was found inside elk.bundled.js (records/p7/classes.tsv).
+    The sources jar of org.eclipse.xtend.lib 2.36.0 is placed with it as the library of the same upstream version.
+    The signature (.asc) of each of the two files was checked with gpg before they were placed (records/r8-xtext-sources/verify.txt, with the two .asc files and key.asc next to it). Limit of that check: the key (uid "Eclipse Xtext Project <xtext-dev@eclipse.org>",
+    primary key fingerprint A5E7 AF58 5AD0 1842 92C7 9EFC DA31 DD9C 0848 53F7) was taken from keyserver.ubuntu.com; that the key belongs to the Eclipse project was not checked further.
+  - web-worker 1.4.1 (the file dist/browser/index.cjs, which is equal to a module of the file): Apache License 2.0. Text: LICENSES/Apache-2.0-web-worker-1.4.1-LICENSE.txt. No NOTICE file in the tarball.
+  - browserify 14.5.0, browser-pack 6.1.0, umd 3.0.3, insert-module-globals 7.2.1 (the wrapper code that browserify puts around the modules; the strings are equal to those made from these tarballs): MIT License.
+    Texts: LICENSES/MIT-browserify-14.5.0-LICENSE.txt (it also carries the notices of the parts taken from Node.js and BSD-3-Clause parts), LICENSES/MIT-browser-pack-6.1.0-LICENSE.txt, LICENSES/MIT-umd-3.0.3-LICENSE.txt
+    (Copyright (c) 2013 Forbes Lindesay), LICENSES/MIT-insert-module-globals-7.2.1-LICENSE.txt. The files of browser-pack and insert-module-globals name no copyright holder.
+  - @babel/helpers 7.26.7 (17 helper functions of the file, found by their names only): MIT License, Copyright (c) 2014-present Sebastian McKenzie and other contributors.
+    Text: LICENSES/MIT-babel-helpers-7.26.7-LICENSE.txt. Whether the helper code in the file is the code of this package could not be decided (babel writes the helpers in a minified form; only the names were compared).
+  - Not assigned: 1 class name, com.google.gwt.core.client.JavaScriptObject$ (the name ends with "$"). It is in no tree that was looked at (records/p7/classes.tsv, status "unmatched").
+    The same package of GWT 2.11.0 has JavaScriptObject (Apache License 2.0), and the "$" at the end looks like a form that the GWT compiler gives to the implementation of that class. This is a guess, not checked.
+    If it is so, this class is under the Apache License 2.0 of GWT (above).
+  - Not found by this method: parts that have no class name (functions that the GWT compiler adds to the output, constant strings, data). Their license, if they have a different one, is not known (NOT CHECKED).
+
+4. Other
+--------
+
+This NOTICE does not change the license of any component. For each component, the license named above and the
+text in LICENSES/ apply. Nothing here restricts the rights that a component's license gives you.

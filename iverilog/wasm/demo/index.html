@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Icarus Verilog WASM</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66;
+    --line: #dcdcd6; --accent: #2f6fd6; --ok: #1f8a4c; --err: #c23b30;
+    --wave: #1f8a4c; --wave-x: #c23b30; --wave-z: #b07d12; --bus: #2f6fd6;
+    --grid: #ecece6; --code-bg: #fbfbf9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171716; --panel: #1f1f1e; --ink: #e9e9e4; --muted: #9a9a93;
+      --line: #34342f; --accent: #6ea2ff; --ok: #4cc27f; --err: #ff7a6e;
+      --wave: #4cc27f; --wave-x: #ff7a6e; --wave-z: #e0b04a; --bus: #6ea2ff;
+      --grid: #262624; --code-bg: #1a1a19;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #171716; --panel: #1f1f1e; --ink: #e9e9e4; --muted: #9a9a93;
+    --line: #34342f; --accent: #6ea2ff; --ok: #4cc27f; --err: #ff7a6e;
+    --wave: #4cc27f; --wave-x: #ff7a6e; --wave-z: #e0b04a; --bus: #6ea2ff;
+    --grid: #262624; --code-bg: #1a1a19;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+           padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
+  button, select { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line);
+                   background: var(--panel); color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 12px 16px; }
+  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+  .pane { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+          display: flex; flex-direction: column; min-width: 0; }
+  .pane h2 { font-size: 12px; font-weight: 600; margin: 0; padding: 8px 12px; color: var(--muted);
+             border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  textarea { width: 100%; border: 0; resize: vertical; padding: 10px 12px; background: var(--code-bg);
+             color: var(--ink); font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+             tab-size: 2; outline: none; border-radius: 0 0 8px 8px; }
+  #design { min-height: 220px; } #tb { min-height: 260px; }
+  .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  #console { margin: 0; padding: 10px 12px; min-height: 160px; max-height: 300px; overflow: auto;
+             font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap;
+             word-break: break-word; }
+  #console .stderr { color: var(--err); } #console .info { color: var(--muted); }
+  #status { font-weight: 500; } #status.ok { color: var(--ok); } #status.err { color: var(--err); }
+  #waves { width: 100%; display: block; }
+  .wavebox { overflow-x: hidden; padding: 4px 0 8px; }
+  .empty { color: var(--muted); padding: 16px 12px; font-size: 13px; }
+  footer { color: var(--muted); font-size: 12px; padding: 4px 16px 20px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Icarus Verilog in WebAssembly</h1>
+    <div class="sub">ivlpp → ivl → vvp, all in a Web Worker in this page</div>
+  </div>
+  <div class="controls">
+    <select id="example" aria-label="Example">
+      <option value="counter">Example: counter</option>
+      <option value="real">Example: real and $random</option>
+      <option value="forever">Example: endless loop (try Stop)</option>
+    </select>
+    <select id="gen" aria-label="Language generation">
+      <option value="2005">-g2005</option>
+      <option value="2009">-g2009</option>
+      <option value="2012" selected>-g2012</option>
+    </select>
+    <button id="stop" disabled>Stop</button>
+    <button id="run" class="primary">Compile &amp; run</button>
+  </div>
+</header>
+<main>
+  <div class="col">
+    <section class="pane"><h2><span>design.v</span></h2><textarea id="design" spellcheck="false"></textarea></section>
+    <section class="pane"><h2><span>tb.v</span></h2><textarea id="tb" spellcheck="false"></textarea></section>
+  </div>
+  <div class="col">
+    <section class="pane"><h2><span>Console</span><span id="status">Loading…</span></h2><pre id="console"></pre></section>
+    <section class="pane"><h2><span>Waveform</span><a id="dl" href="#" download="dump.vcd" hidden>Download VCD</a></h2>
+      <div class="wavebox" id="wavebox"><div class="empty">Run a testbench with $dumpfile/$dumpvars to see waveforms.</div></div>
+    </section>
+  </div>
+</main>
+<footer>Icarus Verilog © Stephen Williams and contributors, licensed under the GNU GPL version 2 or later.
+  This page runs a WebAssembly build of it. Source: the upstream repository plus
+  <a href="SOURCE.patch">SOURCE.patch</a> (the changes and build script used for this build).</footer>
+
+<script>
+const EXAMPLES = {
+  counter: {
+    design: `module counter #(parameter W = 4) (
+  input  wire         clk,
+  input  wire         rst,
+  output reg  [W-1:0] q
+);
+  always @(posedge clk or posedge rst)
+    if (rst) q <= 0;
+    else     q <= q + 1'b1;
+endmodule
+`,
+    tb: `\`timescale 1ns/1ps
+module tb;
+  reg clk = 0, rst = 1;
+  wire [3:0] q;
+  counter dut(.clk(clk), .rst(rst), .q(q));
+
+  always #5 clk = ~clk;
+
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, tb);
+    #12 rst = 0;
+    repeat (20) @(posedge clk);
+    $display("q = %0d at %0t", q, $time);
+    $finish;
+  end
+endmodule
+`},
+  real: {
+    design: `module scale(input real x, output real y);
+  assign y = $sqrt(x) * 2.0;
+endmodule
+`,
+    tb: `module tb;
+  real x, y;
+  integer seed = 7, r, i;
+  scale dut(.x(x), .y(y));
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, tb);
+    for (i = 0; i < 6; i = i + 1) begin
+      x = i * 1.5;
+      r = $random(seed) % 10;     // signed: can be negative
+      #1 $display("x=%4.1f  y=%8.5f  r=%0d", x, y, r);
+    end
+  end
+endmodule
+`},
+  forever: {
+    design: `module blink(input clk, output reg led = 0);
+  always @(posedge clk) led <= ~led;
+endmodule
+`,
+    tb: `module tb;
+  reg clk = 0;
+  wire led;
+  blink dut(.clk(clk), .led(led));
+  always #1 clk = ~clk;          // no $finish: runs until you press Stop
+  initial begin
+    $display("running forever...");
+    forever #1000000 $display("t = %0t", $time);
+  end
+endmodule
+`}
+};
+
+const $ = (s) => document.querySelector(s);
+const con = $('#console'), status = $('#status');
+let worker = null, runId = 0, lastVcdUrl = null, waveObserver = null;
+
+function log(text, cls) {
+  const span = document.createElement('span');
+  if (cls) span.className = cls;
+  span.textContent = text + '\n';
+  con.appendChild(span);
+  if (con.childNodes.length > 2000) con.removeChild(con.firstChild);
+  con.scrollTop = con.scrollHeight;
+}
+function setStatus(text, cls) { status.textContent = text; status.className = cls || ''; }
+
+function startWorker() {
+  worker = new Worker('worker.js');
+  worker.onmessage = (e) => {
+    const m = e.data;
+    if (m.id !== runId) return;
+    if (m.type === 'line') log(m.text, m.stream === 'stderr' ? 'stderr' : '');
+    else if (m.type === 'error') { log(m.message, 'stderr'); finish(false, 'Error'); }
+    else if (m.type === 'done') {
+      const t = m.compileMs != null ? `compile ${m.compileMs.toFixed(0)} ms, total ${m.ms.toFixed(0)} ms`
+                                    : `${m.ms.toFixed(0)} ms`;
+      if (!m.ok) log(`${m.stage} exited with status ${m.rc}`, 'info');
+      else log(`finished (${t})`, 'info');
+      if (m.vcd) showVcd(m.vcd, m.vcdName);
+      finish(m.ok, m.ok ? 'Done' : (m.stage === 'vvp' ? 'Simulation error' : 'Compile error'));
+    }
+  };
+  worker.onerror = (e) => { log(String(e.message || e), 'stderr'); finish(false, 'Worker error'); };
+}
+
+function finish(ok, text) {
+  $('#run').disabled = false; $('#stop').disabled = true;
+  setStatus(text, ok ? 'ok' : 'err');
+}
+
+function run() {
+  con.textContent = '';
+  runId += 1;
+  $('#run').disabled = true; $('#stop').disabled = false;
+  setStatus('Running…');
+  worker.postMessage({ id: runId, generation: $('#gen').value,
+    files: { 'design.v': $('#design').value, 'tb.v': $('#tb').value } });
+}
+
+function stop() {
+  worker.terminate();            // the only way to interrupt a running wasm call
+  startWorker();
+  log('stopped', 'info');
+  finish(false, 'Stopped');
+}
+
+function loadExample(name) {
+  $('#design').value = EXAMPLES[name].design;
+  $('#tb').value = EXAMPLES[name].tb;
+}
+
+/* ---------- minimal VCD parser and waveform drawing ---------- */
+function parseVcd(text) {
+  const tok = text.split(/\s+/);
+  const vars = [], byId = new Map(), scope = [];
+  let i = 0, t = 0, tmax = 0, timescale = '';
+  const skipToEnd = () => { const out = []; while (i < tok.length && tok[i] !== '$end') out.push(tok[i++]); i++; return out; };
+  const change = (id, v) => { const list = byId.get(id); if (list) for (const vr of list) vr.ch.push([t, v]); };
+  while (i < tok.length) {
+    const w = tok[i++];
+    if (!w) continue;
+    if (w === '$scope') { const a = skipToEnd(); scope.push(a[1]); }
+    else if (w === '$upscope') { skipToEnd(); scope.pop(); }
+    else if (w === '$var') {
+      const a = skipToEnd();
+      const vr = { type: a[0], width: +a[1], id: a[2], name: scope.concat(a[3]).join('.'), ch: [] };
+      vars.push(vr);
+      if (!byId.has(vr.id)) byId.set(vr.id, []);
+      byId.get(vr.id).push(vr);
+    }
+    else if (w === '$timescale') timescale = skipToEnd().join('');
+    else if (w === '$dumpvars' || w === '$dumpall' || w === '$dumpon' || w === '$dumpoff' || w === '$end') { /* changes follow */ }
+    else if (w[0] === '$') skipToEnd();
+    else if (w[0] === '#') { t = parseInt(w.slice(1), 10); if (t > tmax) tmax = t; }
+    else if (/^[bBrR]/.test(w)) change(tok[i++], w.slice(1));
+    else change(w.slice(1), w[0]);
+  }
+  return { vars, tmax, timescale };
+}
+
+function fmtBus(v, vr) {
+  if (vr.type === 'real') { const n = parseFloat(v); return Number.isFinite(n) ? String(+n.toPrecision(6)) : v; }
+  if (/^[01]+$/.test(v)) {
+    if (vr.type === 'integer')                       // integers as signed decimal
+      return String(v.length === 32 && v[0] === '1' ? parseInt(v, 2) - 2 ** 32 : parseInt(v, 2));
+    return BigInt('0b' + v).toString(16);          // other vectors in hex
+  }
+  return v.length > 12 ? v.slice(0, 11) + '…' : v;
+}
+
+// Tick step of 1, 2 or 5 times a power of ten, and a label in a readable unit.
+function niceStep(span, n) {
+  const raw = span / n, p = 10 ** Math.floor(Math.log10(raw)), f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+}
+function timeLabel(t, timescale) {
+  const m = /^(\d+)(s|ms|us|ns|ps|fs)$/.exec(timescale || '1s') || [0, '1', 's'];
+  const exp = { s: 0, ms: -3, us: -6, ns: -9, ps: -12, fs: -15 };
+  const units = ['s', 'ms', 'us', 'ns', 'ps', 'fs'];
+  const sec = t * (+m[1]) * 10 ** exp[m[2]];
+  if (sec === 0) return '0';
+  for (const u of units) {
+    const v = sec / 10 ** exp[u];
+    if (Math.abs(v) >= 1) return +v.toPrecision(4) + ' ' + u;
+  }
+  return +(sec / 1e-15).toPrecision(4) + ' fs';
+}
+
+function showVcd(text, name) {
+  if (lastVcdUrl) URL.revokeObjectURL(lastVcdUrl);
+  lastVcdUrl = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  const dl = $('#dl'); dl.href = lastVcdUrl; dl.download = name || 'dump.vcd'; dl.hidden = false;
+  const vcd = parseVcd(text);
+  // one row per distinct signal (a port and the net it is connected to share an id)
+  const seen = new Set(), rows = [];
+  for (const vr of vcd.vars) { if (!seen.has(vr.id)) { seen.add(vr.id); rows.push(vr); } }
+  const box = $('#wavebox');
+  box.innerHTML = '';
+  if (!rows.length) { box.innerHTML = '<div class="empty">The VCD file has no signals.</div>'; return; }
+  const canvas = document.createElement('canvas');
+  canvas.id = 'waves';
+  box.appendChild(canvas);
+  const draw = () => { if (canvas.isConnected) drawWaves(canvas, rows, vcd); };
+  draw();
+  if (waveObserver) waveObserver.disconnect();
+  waveObserver = new ResizeObserver(draw);
+  waveObserver.observe(box);
+}
+
+function drawWaves(canvas, rows, vcd) {
+  const css = getComputedStyle(document.documentElement);
+  const col = (n) => css.getPropertyValue(n).trim();
+  const W = canvas.parentElement.clientWidth, rowH = 24, top = 22;
+  const H = top + rows.length * rowH + 4, dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.height = H + 'px';
+  const g = canvas.getContext('2d');
+  g.scale(dpr, dpr);
+  g.font = '11.5px ui-monospace, Menlo, Consolas, monospace';
+  const nameW = Math.min(170, Math.max(90, W * 0.28)), x0 = nameW + 6, x1 = W - 8;
+  const tmax = Math.max(1, vcd.tmax), X = (t) => x0 + (x1 - x0) * t / tmax;
+  // time axis with round tick values
+  g.fillStyle = col('--muted'); g.strokeStyle = col('--grid'); g.lineWidth = 1;
+  const step = niceStep(tmax, Math.max(2, Math.floor((x1 - x0) / 90)));
+  g.textAlign = 'center';
+  for (let t = 0; t <= tmax + 1e-9; t += step) {
+    const x = X(t);
+    g.beginPath(); g.moveTo(Math.round(x) + .5, top - 4); g.lineTo(Math.round(x) + .5, H); g.stroke();
+    g.fillText(timeLabel(t, vcd.timescale), Math.min(Math.max(x, x0 + 12), x1 - 16), 12);
+  }
+  g.textAlign = 'left';
+  rows.forEach((vr, r) => {
+    const yT = top + r * rowH + 4, yB = yT + rowH - 8, yM = (yT + yB) / 2;
+    g.fillStyle = col('--ink');
+    let label = vr.name;
+    while (g.measureText(label).width > nameW - 8 && label.length > 4) label = '…' + label.slice(2);
+    g.fillText(label, 4, yM + 4);
+    const ch = vr.ch;
+    for (let k = 0; k < ch.length; k++) {
+      const [t, v] = ch[k], tn = k + 1 < ch.length ? ch[k + 1][0] : tmax;
+      const xa = X(t), xb = X(tn);
+      if (xb < xa) continue;
+      if (vr.width === 1 && vr.type !== 'real' && v.length === 1) {
+        const c = v === '1' ? yT : v === '0' ? yB : yM;
+        g.strokeStyle = v === 'x' || v === 'X' ? col('--wave-x') : v === 'z' || v === 'Z' ? col('--wave-z') : col('--wave');
+        g.lineWidth = 1.5;
+        g.beginPath();
+        if (k > 0) { const pv = ch[k - 1][1]; const pc = pv === '1' ? yT : pv === '0' ? yB : yM; g.moveTo(xa, pc); g.lineTo(xa, c); }
+        else g.moveTo(xa, c);
+        g.lineTo(xb, c); g.stroke();
+        if (v === 'x' || v === 'X') { g.fillStyle = col('--wave-x'); g.globalAlpha = .18; g.fillRect(xa, yT, xb - xa, yB - yT); g.globalAlpha = 1; }
+      } else {
+        const bad = /[xXzZ]/.test(v);
+        g.strokeStyle = bad ? col('--wave-x') : col('--bus'); g.lineWidth = 1.2;
+        const d = Math.min(3, (xb - xa) / 2);
+        g.beginPath();
+        g.moveTo(xa, yM); g.lineTo(xa + d, yT); g.lineTo(xb - d, yT); g.lineTo(xb, yM);
+        g.lineTo(xb - d, yB); g.lineTo(xa + d, yB); g.closePath(); g.stroke();
+        const s = fmtBus(v, vr);
+        if (g.measureText(s).width < xb - xa - 8) { g.fillStyle = col('--ink'); g.fillText(s, xa + 5, yM + 4); }
+      }
+    }
+  });
+}
+
+$('#run').onclick = run;
+$('#stop').onclick = stop;
+$('#example').onchange = (e) => loadExample(e.target.value);
+document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !$('#run').disabled) run(); });
+loadExample('counter');
+startWorker();
+setStatus('Ready');
+</script>
+</body>
+</html>

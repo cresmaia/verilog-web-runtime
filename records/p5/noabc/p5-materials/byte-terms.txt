@@ -1,0 +1,13 @@
+# バイト列(wasm・js・tar)に語が何回出るか。語は ABC の木(Saucy・SAT・BDD・圧縮・kitty・eSLIM)に由来する物と、ABC の出力する語。大文字小文字は語のとおり。
+file	sha256	saucy	Saucy	SAUCY	Katebi	Darga	Liffiton	University of Michigan	Regents of the University	Berkeley	UC Berkeley	Alan Mishchenko	kissat	Armin Biere	cadical	CaDiCaL	Glucose	glucose	satoko	Satoko	Cudd	cudd	Colorado	btor2	bzip2	BZ2_	Julian Seward	eSLIM	kitty	xSAT	Tempia	Reichl	Soeken	Hsieh	Audemard	zlib	inflate	deflate	yosys-abc	abc9
+B1 gen/yosys.core.wasm	c0f5249c3194ae9d8f9143fdffa70c2d03c7650481084be1bd9596f4502439fa	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	2	0	0	1	80
+ABC つき gen/yosys.core.wasm	e37a7e65e3fa4efbbd64a9c1b0e906be16cdc6c4d5273109d17537f78449f38c	40	3	1	5	0	0	1	0	2	2	1	482	9	120	2410	34	34	60	14	128	131	0	14	7	22	0	9817	109	59	1	1	2	0	3	2	10	11	3	205
+B1 gen/bundle.js	914588397948e94352ffbb90105dbf42c621c5a6e2e98a13006ca4abc1b82ea7	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+B1 gen/yosys.core2.wasm	d18ae4291eb6c1a0b64274048f1d314169def07a43f887825e25009b9e0b9bae	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+B1 gen/yosys.core3.wasm	f85f89abf21f3e3958ad70e939303696fca27a83b5f85d81c71692093cdf5994	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+B1 gen/yosys.core4.wasm	a4d95ce2fe69c19298e68b3ea57317789e1a1c9c86b9a987b0b711624922536e	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+B1 gen/yosys-resources.0.tar	8cc19105272e7b95883db528f8c3b7900462d6918cc5de869769e904b298ee42	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	3	0	0	2	32
+# B1 の行の yosys-abc と abc9 は Yosys 自身の文字列(init_abc_executable_name・abc9_ops など)である。ABC つきの行と並べて読む
+# 語 39 個のうち、B1 の wasm で0かつ ABC つきで1以上(比べる相手として働く語): 30 個 ['saucy', 'Saucy', 'SAUCY', 'Katebi', 'University of Michigan', 'Berkeley', 'UC Berkeley', 'Alan Mishchenko', 'kissat', 'Armin Biere', 'cadical', 'CaDiCaL', 'Glucose', 'glucose', 'satoko', 'Satoko', 'Cudd', 'cudd', 'btor2', 'bzip2', 'BZ2_', 'eSLIM', 'kitty', 'xSAT', 'Tempia', 'Reichl', 'Soeken', 'Audemard', 'inflate', 'deflate']
+# B1 で0・ABC つきでも0(比べる相手として働かない語): 6 個 ['Darga', 'Liffiton', 'Regents of the University', 'Colorado', 'Julian Seward', 'Hsieh']
+# B1 で1以上(Yosys 自身の語): ['zlib', 'yosys-abc', 'abc9']
